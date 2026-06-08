@@ -34,5 +34,22 @@
         ]
       }
     ]
+  },
+
+  "permissions": {
+    "allow": [
+      "Bash(git check-ignore *)",
+      "Bash(npm run *)",
+      "Bash(gh api *)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(npm install *)",
+      "Bash(sudo npm install -g uipro-cli)",
+      "Bash(npx uipro-cli *)"
+    ],
+
+    "additionalDirectories": [
+      ".claude/skills"
+    ]
   }
 }
