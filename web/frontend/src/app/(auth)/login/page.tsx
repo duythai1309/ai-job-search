@@ -28,10 +28,10 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex font-sans">
-      <div className="hidden lg:flex w-1/2 bg-primary-900 flex-col justify-between p-12 relative overflow-hidden">
+      <div className="hidden lg:flex w-1/2 bg-brand-900 flex-col justify-between p-12 relative overflow-hidden">
         <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "linear-gradient(white 1px, transparent 1px), linear-gradient(to right, white 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
-        <div className="absolute top-0 right-0 w-80 h-80 bg-primary-700 rounded-full blur-3xl opacity-40" />
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-accent-500 rounded-full blur-3xl opacity-15" />
+        <div className="absolute top-0 right-0 w-80 h-80 bg-brand-700 rounded-full blur-3xl opacity-40" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500 rounded-full blur-3xl opacity-15" />
         <div className="relative">
           <Link href="/" className="flex items-center gap-2.5">
             <div className="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center">
@@ -50,7 +50,7 @@ export default function LoginPage() {
           <ul className="space-y-3">
             {["Tổng hợp từ 4 cổng việc làm lớn nhất", "AI đánh giá độ phù hợp chi tiết", "CV builder & cover letter thông minh"].map((item) => (
               <li key={item} className="flex items-center gap-3 text-white/80 text-sm font-body">
-                <CheckCircle2 className="w-4 h-4 text-accent-400 shrink-0" /> {item}
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" /> {item}
               </li>
             ))}
           </ul>
@@ -61,7 +61,7 @@ export default function LoginPage() {
       <div className="flex-1 flex items-center justify-center px-6 py-12 bg-white">
         <div className="w-full max-w-sm">
           <div className="lg:hidden flex items-center gap-2 mb-8">
-            <div className="w-8 h-8 bg-primary-800 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
               <Briefcase className="w-4 h-4 text-white" />
             </div>
             <span className="font-bold text-slate-900 text-lg">Vica</span>

@@ -52,6 +52,8 @@ const config: Config = {
         card: "0 1px 3px 0 rgb(0 0 0 / .06), 0 1px 2px -1px rgb(0 0 0 / .04)",
         "card-hover": "0 8px 24px -4px rgb(0 0 0 / .10), 0 2px 6px -2px rgb(0 0 0 / .06)",
         "btn-accent": "0 4px 14px 0 rgb(245 158 11 / .35)",
+        "btn-cta":    "0 4px 14px 0 rgb(16 185 129 / .35)",
+        "btn-brand":  "0 4px 14px 0 rgb(79 70 229 / .30)",
       },
     },
   },
