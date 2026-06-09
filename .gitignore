@@ -12,6 +12,16 @@ build/
 .pytest_cache/
 .mypy_cache/
 
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Local test output
+.coverage
+htmlcov/
+
 # OS
 .DS_Store
 

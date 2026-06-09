@@ -73,6 +73,67 @@ Update **[WORKLOG.md](./WORKLOG.md)** whenever your team makes a technical decis
 - **Brainstorming** — options considered, pros / cons, conclusion
 - **Important bugs** — root cause and fix
 
+## VICA MVP Workspace
+
+The application skeleton follows the modular-monolith decision documented in
+`docs/ARCHITECTURE.md`:
+
+```text
+web/
+  frontend/   Next.js, React, TypeScript, TailwindCSS
+  backend/    FastAPI application running as one backend process
+data/         Deterministic Vietnam job seed data
+```
+
+Only health checks are implemented in the initial skeleton. CV upload, AI
+calls, job discovery, scoring, and recommendations are intentionally absent.
+
+### Frontend setup
+
+Requirements: Node.js 20 or newer.
+
+```bash
+cd web/frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`. The frontend health endpoint is:
+
+```text
+GET http://localhost:3000/api/health
+```
+
+### Backend setup
+
+Requirements: Python 3.11 or newer.
+
+```powershell
+cd web/backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev]"
+python -m uvicorn app.main:app --reload
+```
+
+For macOS, Linux, or Git Bash, activate the environment with:
+
+```bash
+source .venv/bin/activate
+```
+
+The backend runs at `http://localhost:8000`. Its versioned health endpoint is:
+
+```text
+GET http://localhost:8000/api/v1/health
+```
+
+Run the backend health test from `web/backend`:
+
+```bash
+python -m pytest
+```
+
 ## AI Logging
 
 Prompts and tool calls are **automatically logged** when you use any supported AI tool (Claude Code, Cursor, Codex, Gemini, Antigravity, Copilot). No manual steps needed after running `setup_hooks`.
