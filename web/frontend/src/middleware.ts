@@ -49,8 +49,16 @@ export async function middleware(request: NextRequest) {
     const publicPaths = ["/", "/auth/login", "/auth/register"];
     const isPublicPath = publicPaths.includes(pathname);
     
-    // Protected pages that require authentication  
-    const isProtectedPath = !isPublicPath && pathname.startsWith("/(app)") || pathname.startsWith("/dashboard") || pathname.startsWith("/analytics") || pathname.startsWith("/applications") || pathname.startsWith("/chat");
+    // Protected pages that require authentication
+    // Only routes within /(app) group are protected
+    const isProtectedPath = pathname.startsWith("/(app)") || 
+                           pathname.startsWith("/dashboard") || 
+                           pathname.startsWith("/analytics") || 
+                           pathname.startsWith("/applications") || 
+                           pathname.startsWith("/chat") ||
+                           pathname.startsWith("/profile") ||
+                           pathname.startsWith("/cv") ||
+                           pathname.startsWith("/jobs");
 
     // If user is not authenticated and trying to access protected page, redirect to login
     if (!authUser && isProtectedPath) {
