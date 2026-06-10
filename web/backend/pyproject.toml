@@ -9,6 +9,7 @@ description = "FastAPI modular monolith for the VICA Agentic Career MVP"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.115,<1",
+  "supabase>=2.10,<3",
   "uvicorn[standard]>=0.34,<1",
 ]
 
