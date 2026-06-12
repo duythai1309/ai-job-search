@@ -1,7 +1,8 @@
 {
-  "installCommand": "npm install",
-  "buildCommand": "npm run build",
+  "buildCommand": "cd web/frontend && pnpm install && pnpm run build",
+  "installCommand": "pnpm install --recursive",
   "framework": "nextjs",
-  "outputDirectory": ".next",
+  "outputDirectory": "web/frontend/.next",
+  "rootDirectory": "web/frontend",
   "regions": ["hkg1"]
 }
