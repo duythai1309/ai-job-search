@@ -151,7 +151,12 @@ export default function JobDetailPage() {
 
           <div className="mt-4 pt-4 border-t border-slate-100 flex gap-4">
             <Link href="/cv" className="text-sm text-primary-700 hover:text-primary-900 font-semibold font-body transition-colors">Tạo CV cho vị trí này →</Link>
-            <Link href={`/chat?context=job&id=${job.id}`} className="text-sm text-primary-700 hover:text-primary-900 font-semibold font-body transition-colors">Hỏi AI về chiến lược ứng tuyển →</Link>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("vica:open-chat"))}
+              className="text-sm text-primary-700 hover:text-primary-900 font-semibold font-body transition-colors cursor-pointer"
+            >
+              Hỏi AI về chiến lược ứng tuyển →
+            </button>
           </div>
         </div>
       )}

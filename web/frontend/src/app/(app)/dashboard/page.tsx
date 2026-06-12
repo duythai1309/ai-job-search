@@ -1,9 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
+import {
+  ClipboardList, Search, FileText, MessageSquare,
+  TrendingUp, ArrowRight,
+} from "lucide-react";
 import { api } from "@/lib/api";
-import { STATUS_LABELS, STATUS_COLORS } from "@/lib/types";
+import { STATUS_LABELS } from "@/lib/types";
+import { createClient } from "@/lib/supabase";
 
 interface Stats {
   total: number;
@@ -16,24 +21,44 @@ interface Stats {
 }
 
 const STATUS_CHART_COLORS: Record<string, string> = {
-  bookmarked: "#94a3b8",
-  applied: "#60a5fa",
-  interview: "#fb923c",
-  offer: "#4ade80",
-  rejected: "#f87171",
-  withdrawn: "#d1d5db",
+  bookmarked: "#cbd5e1",
+  applied:    "#0f172a",
+  interview:  "#f59e0b",
+  offer:      "#10b981",
+  rejected:   "#f87171",
+  withdrawn:  "#e2e8f0",
 };
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Chào buổi sáng";
+  if (h < 18) return "Chào buổi chiều";
+  return "Chào buổi tối";
+}
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [firstName, setFirstName] = useState("");
 
   useEffect(() => {
+    createClient()
+      .auth.getUser()
+      .then(({ data }) => {
+        const full = data.user?.user_metadata?.full_name || data.user?.email?.split("@")[0] || "";
+        const parts = full.trim().split(" ").filter(Boolean);
+        setFirstName(parts[parts.length - 1] || full);
+      });
+
     async function load() {
       try {
         const [activity, appStats] = await Promise.all([
-          api.get<{ jobs_explored: number; cvs_created: number; avg_fit_score: number | null }>("/analytics/user/activity"),
-          api.get<{ total: number; by_status: Record<string, number>; active: number; success_rate: number }>("/applications/stats"),
+          api.get<{ jobs_explored: number; cvs_created: number; avg_fit_score: number | null }>(
+            "/analytics/user/activity"
+          ),
+          api.get<{ total: number; by_status: Record<string, number>; active: number; success_rate: number }>(
+            "/applications/stats"
+          ),
         ]);
         setStats({ ...appStats, ...activity });
       } catch {
@@ -52,121 +77,133 @@ export default function DashboardPage() {
     : [];
 
   const metrics = [
-    { label: "Tổng đơn ứng tuyển", value: stats?.total ?? "—", icon: "📋", color: "bg-blue-50 text-blue-600" },
-    { label: "Đang tiến hành", value: stats?.active ?? "—", icon: "⚡", color: "bg-orange-50 text-orange-600" },
-    { label: "Việc đã khám phá", value: stats?.jobs_explored ?? "—", icon: "🔍", color: "bg-purple-50 text-purple-600" },
-    { label: "CV đã tạo", value: stats?.cvs_created ?? "—", icon: "📄", color: "bg-green-50 text-green-600" },
+    { label: "Đơn ứng tuyển", value: stats?.total ?? "—" },
+    { label: "Đang tiến hành", value: stats?.active ?? "—" },
+    { label: "Việc đã khám phá", value: stats?.jobs_explored ?? "—" },
+    { label: "CV đã tạo", value: stats?.cvs_created ?? "—" },
+    {
+      label: "Điểm phù hợp TB",
+      value: stats?.avg_fit_score != null ? `${stats.avg_fit_score}%` : "—",
+    },
+  ];
+
+  const quickActions = [
+    { href: "/jobs", Icon: Search, label: "Tìm kiếm việc làm", desc: "Tổng hợp từ 4 cổng tuyển dụng VN" },
+    { href: "/cv", Icon: FileText, label: "Tạo hoặc chỉnh CV", desc: "AI phân tích và đề xuất cải thiện" },
+    { href: "/analytics", Icon: TrendingUp, label: "Xu hướng thị trường", desc: "Kỹ năng và mức lương đang hot" },
   ];
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Tổng quan</h1>
-        <p className="text-gray-500 mt-1">Theo dõi tiến trình tìm việc của bạn</p>
+    <div className="px-8 lg:px-12 py-10 max-w-screen-2xl">
+      {/* Header */}
+      <div className="mb-10">
+        <p className="text-sm text-slate-400 mb-1">{greeting()}</p>
+        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
+          {firstName ? `${firstName}.` : "Chào mừng trở lại."}
+        </h1>
       </div>
 
-      {loading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl p-5 h-28 animate-pulse" />
-          ))}
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {metrics.map((m) => (
-              <div key={m.label} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                <div className={`inline-flex items-center justify-center w-10 h-10 rounded-xl text-lg ${m.color} mb-3`}>
-                  {m.icon}
-                </div>
-                <div className="text-2xl font-bold text-gray-900">{m.value}</div>
-                <div className="text-sm text-gray-500 mt-0.5">{m.label}</div>
-              </div>
-            ))}
+      {/* Metrics: flat row with thin dividers */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 border-y border-slate-200 divide-x divide-slate-200 mb-12">
+        {metrics.map((m) => (
+          <div key={m.label} className="px-6 py-6 first:pl-0">
+            {loading ? (
+              <div className="h-8 w-12 bg-slate-100 rounded animate-pulse mb-1" />
+            ) : (
+              <div className="text-3xl font-bold text-slate-900 tabular-nums">{m.value}</div>
+            )}
+            <div className="text-xs text-slate-400 mt-1">{m.label}</div>
           </div>
+        ))}
+      </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <h2 className="font-semibold text-gray-900 mb-4">Pipeline ứng tuyển</h2>
-              {statusData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie
-                      data={statusData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={55}
-                      outerRadius={90}
-                      paddingAngle={3}
-                      dataKey="value"
-                    >
-                      {statusData.map((entry) => (
-                        <Cell key={entry.key} fill={STATUS_CHART_COLORS[entry.key] || "#94a3b8"} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: number, name: string) => [value, name]} />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-[220px] flex items-center justify-center text-gray-400">
-                  <div className="text-center">
-                    <div className="text-4xl mb-2">📋</div>
-                    <p className="text-sm">Chưa có đơn ứng tuyển nào</p>
-                    <Link href="/jobs" className="text-brand-600 text-sm hover:underline mt-1 inline-block">
-                      Tìm việc ngay →
-                    </Link>
-                  </div>
-                </div>
-              )}
-              <div className="flex flex-wrap gap-2 mt-2">
-                {statusData.map((d) => (
-                  <div key={d.key} className="flex items-center gap-1.5 text-xs text-gray-600">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ background: STATUS_CHART_COLORS[d.key] }} />
-                    {d.name} ({d.value})
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <h2 className="font-semibold text-gray-900 mb-4">Bắt đầu nhanh</h2>
-              <div className="space-y-3">
-                {[
-                  { href: "/jobs", icon: "🔍", label: "Tìm kiếm việc làm mới", desc: "Tổng hợp từ 4 cổng VN" },
-                  { href: "/cv", icon: "📄", label: "Tạo CV mới", desc: "AI phân tích và gợi ý" },
-                  { href: "/chat", icon: "💬", label: "Hỏi AI tư vấn", desc: "Chiến lược tìm việc" },
-                  { href: "/analytics", icon: "📈", label: "Xem thị trường", desc: "Kỹ năng & mức lương hot" },
-                ].map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 transition group"
+      {/* Pipeline + Quick actions */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-20">
+        {/* Pipeline */}
+        <div>
+          <h2 className="font-semibold text-slate-900">Pipeline ứng tuyển</h2>
+          <p className="text-xs text-slate-400 mt-0.5 mb-6">Phân bổ theo trạng thái hiện tại</p>
+          {!loading && statusData.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie
+                    data={statusData}
+                    cx="50%" cy="50%"
+                    innerRadius={58} outerRadius={92}
+                    paddingAngle={3}
+                    dataKey="value"
                   >
-                    <div className="text-2xl">{item.icon}</div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-900 group-hover:text-brand-600 transition">{item.label}</div>
-                      <div className="text-xs text-gray-400">{item.desc}</div>
-                    </div>
-                    <div className="ml-auto text-gray-300 group-hover:text-brand-400 transition">→</div>
-                  </Link>
+                    {statusData.map((entry) => (
+                      <Cell key={entry.key} fill={STATUS_CHART_COLORS[entry.key] || "#cbd5e1"} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
+                    formatter={(value: number, name: string) => [value, name]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex flex-wrap gap-x-5 gap-y-2 mt-4">
+                {statusData.map((d) => (
+                  <div key={d.key} className="flex items-center gap-1.5 text-xs text-slate-600">
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ background: STATUS_CHART_COLORS[d.key] }}
+                    />
+                    {d.name}
+                    <span className="text-slate-400">{d.value}</span>
+                  </div>
                 ))}
               </div>
-            </div>
-          </div>
-
-          {stats?.avg_fit_score && (
-            <div className="bg-gradient-to-r from-brand-500 to-indigo-600 rounded-2xl p-6 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-lg">Điểm phù hợp trung bình</h3>
-                  <p className="text-white/70 text-sm mt-1">Dựa trên {stats.total} lần đánh giá AI</p>
-                </div>
-                <div className="text-5xl font-bold">{stats.avg_fit_score}%</div>
-              </div>
+            </>
+          ) : (
+            <div className="h-[220px] border border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-center">
+              <ClipboardList className="w-6 h-6 text-slate-300 mb-3" />
+              <p className="text-sm font-medium text-slate-500">Chưa có đơn ứng tuyển</p>
+              <Link
+                href="/jobs"
+                className="text-xs text-slate-900 font-semibold hover:underline mt-1.5 inline-flex items-center gap-1"
+              >
+                Tìm việc ngay <ArrowRight className="w-3 h-3" />
+              </Link>
             </div>
           )}
-        </>
-      )}
+        </div>
+
+        {/* Quick actions */}
+        <div>
+          <h2 className="font-semibold text-slate-900">Bắt đầu nhanh</h2>
+          <p className="text-xs text-slate-400 mt-0.5 mb-6">Truy cập các tính năng phổ biến</p>
+          <div className="divide-y divide-slate-200 border-y border-slate-200">
+            {quickActions.map(({ href, Icon, label, desc }) => (
+              <Link
+                key={href}
+                href={href}
+                className="flex items-center gap-4 py-4 group cursor-pointer"
+              >
+                <Icon className="w-[18px] h-[18px] text-slate-400 group-hover:text-slate-900 transition-colors shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-slate-800">{label}</div>
+                  <div className="text-xs text-slate-400">{desc}</div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-slate-900 group-hover:translate-x-0.5 transition-all shrink-0" />
+              </Link>
+            ))}
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("vica:open-chat"))}
+              className="w-full flex items-center gap-4 py-4 group cursor-pointer text-left"
+            >
+              <MessageSquare className="w-[18px] h-[18px] text-slate-400 group-hover:text-slate-900 transition-colors shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-slate-800">Hỏi AI tư vấn</div>
+                <div className="text-xs text-slate-400">Chiến lược tìm việc cá nhân hoá — ngay trên trang này</div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-slate-900 group-hover:translate-x-0.5 transition-all shrink-0" />
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

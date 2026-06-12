@@ -1,19 +1,35 @@
 import { createClient } from "./supabase";
 
+export interface CVSection {
+  id: string;
+  title: string;
+  content_preview: string;
+  score: number;
+  issues: string[];
+  suggestions: string[];
+}
+
+export interface CVAnalysisResult {
+  name: string;
+  overall_score: number;
+  summary_message: string;
+  top_priorities: string[];
+  sections: CVSection[];
+}
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 async function getAuthHeader(): Promise<Record<string, string>> {
   try {
     const supabase = createClient();
-    const { data, error } = await supabase.auth.getSession();
-    
-    if (error) {
-      console.warn("[v0] Session retrieval error:", error.message);
-      return {};
-    }
-    
+    const { data } = await supabase.auth.getSession();
     const token = data?.session?.access_token;
-    return token ? { Authorization: `Bearer ${token}` } : {};
+    if (token) return { Authorization: `Bearer ${token}` };
+
+    // Fallback: refreshSession forces the client to rehydrate from cookies/storage
+    const { data: refreshed } = await supabase.auth.refreshSession();
+    const refreshedToken = refreshed?.session?.access_token;
+    return refreshedToken ? { Authorization: `Bearer ${refreshedToken}` } : {};
   } catch (error) {
     console.warn("[v0] Auth header error:", error instanceof Error ? error.message : String(error));
     return {};
@@ -65,6 +81,22 @@ export const api = {
     if (!res.ok) throw new Error("Chat error");
     const sessionId = res.headers.get("X-Session-Id") || "";
     return { reader: res.body!.getReader(), sessionId };
+  },
+
+  async uploadCv(file: File): Promise<CVAnalysisResult> {
+    const authHeader = await getAuthHeader();
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch(`${BASE_URL}/onboarding/parse-cv`, {
+      method: "POST",
+      headers: authHeader,
+      body: formData,
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(error.detail || "Lỗi phân tích CV");
+    }
+    return res.json();
   },
 
   async downloadPdf(cvId: string): Promise<void> {
