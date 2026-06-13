@@ -232,3 +232,17 @@ Do not:
 - commit secrets,
 - scrape job sites aggressively,
 - store raw CV text in logs.
+
+---
+
+## Frontend Correctness Milestone
+
+- Active frontend root remains `web/frontend/src/app`.
+- The teammate frontend remains the visual source of truth.
+- Backend job payloads are normalized from `skills`/`apply_url` into the teammate view model.
+- Sample or unavailable jobs do not expose broken application links.
+- Browser-only profile, application, saved-job, and CV state is scoped by authenticated user ID, with `demo-user` fallback.
+- CV editing and suggestion application are explicitly local preview behavior because the MVP has no CV update endpoint.
+- Chat is visibly unavailable and disabled because the current MVP API contract has no chat endpoint.
+- Analytics describes the currently available job records and labels seeded data instead of claiming realtime sector or salary analysis.
+- Important API responses now use lightweight runtime validators and safe error-envelope extraction.

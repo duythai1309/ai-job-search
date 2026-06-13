@@ -1,4 +1,17 @@
 import { createClient } from "./supabase";
+import {
+  CVAnalysisPayload,
+  FitScoreResult,
+  RecommendationResult,
+  extractErrorMessage,
+  normalizeJob,
+  normalizeJobList,
+  validateCvAnalysis,
+  validateFitScore,
+  validateRecommendations,
+} from "./contracts";
+import { JobPosting } from "./types";
+import { buildStorageKey, ScopedStorageResource } from "./storage";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
@@ -16,10 +29,6 @@ type ApiEnvelope<T> = {
   meta?: unknown;
   error?: ApiErrorShape;
 };
-
-const CV_IDS_KEY = "vica:cvIds";
-const APPLICATIONS_KEY = "vica:applications";
-const PROFILE_KEY = "vica:profile";
 
 export interface CVSection {
   id: string;
@@ -60,16 +69,12 @@ function buildUrl(path: string, query?: Record<string, string | number | undefin
   return url;
 }
 
-function extractErrorMessage(payload: unknown, fallback: string): string {
-  if (!payload || typeof payload !== "object") return fallback;
-  const error = payload as ApiErrorShape;
-  return error.message || error.detail || fallback;
-}
-
 async function parseResponse<T>(response: Response): Promise<T> {
   const contentType = response.headers.get("content-type") ?? "";
   const hasJson = contentType.includes("application/json");
-  const payload = hasJson ? await response.json().catch(() => null) : null;
+  const payload = hasJson
+    ? await response.json().catch(() => null)
+    : await response.text().catch(() => "");
 
   if (!response.ok) {
     const fallback = `${response.status} ${response.statusText}`.trim();
@@ -119,6 +124,19 @@ async function requestJson<T>(
   return parseResponse<T>(response);
 }
 
+async function getStorageUserKey(): Promise<string> {
+  try {
+    const { data } = await createClient().auth.getSession();
+    return data.session?.user.id || "demo-user";
+  } catch {
+    return "demo-user";
+  }
+}
+
+async function scopedKey(resource: ScopedStorageResource): Promise<string> {
+  return buildStorageKey(await getStorageUserKey(), resource);
+}
+
 function readLocalJson<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
   try {
@@ -135,11 +153,13 @@ function writeLocalJson<T>(key: string, value: T): void {
   }
 }
 
-function rememberCvId(cvId: string): void {
-  const ids = readLocalJson<string[]>(CV_IDS_KEY, []);
-  writeLocalJson(CV_IDS_KEY, [cvId, ...ids.filter((id) => id !== cvId)]);
+async function rememberCvId(cvId: string): Promise<void> {
+  const idsKey = await scopedKey("cvIds");
+  const lastCvIdKey = await scopedKey("lastCvId");
+  const ids = readLocalJson<string[]>(idsKey, []);
+  writeLocalJson(idsKey, [cvId, ...ids.filter((id) => id !== cvId)]);
   if (typeof window !== "undefined") {
-    window.localStorage.setItem("vica:lastCvId", cvId);
+    window.localStorage.setItem(lastCvIdKey, cvId);
   }
 }
 
@@ -172,19 +192,26 @@ export const api = {
       body: formData,
     });
     const cvId = (record as { id?: string })?.id;
-    if (cvId) rememberCvId(cvId);
+    if (cvId) await rememberCvId(cvId);
     return record;
   },
 
   uploadCv: async (file: File): Promise<CVAnalysisResult> => {
     const record = await api.uploadCvRecord<{ id: string; filename?: string; summary?: string }>(file);
-    const analysis = await api.analyzeCv<Partial<CVAnalysisResult>>(record.id);
+    const analysis = await api.analyzeCv(record.id);
     return {
       name: analysis.name || record.filename || file.name,
       overall_score: analysis.overall_score ?? 0,
       summary_message: analysis.summary_message || record.summary || "CV đã được tải lên và phân tích.",
       top_priorities: analysis.top_priorities || [],
-      sections: analysis.sections || [],
+      sections: analysis.sections.map((section, index) => ({
+        id: section.id || `section-${index}`,
+        title: section.title || `Mục ${index + 1}`,
+        content_preview: section.content_preview || "",
+        score: section.score ?? 0,
+        issues: section.issues,
+        suggestions: section.suggestions,
+      })),
     };
   },
 
@@ -192,32 +219,33 @@ export const api = {
 
   deleteCv: async (cvId: string) => {
     await requestJson<void>(`/cvs/${cvId}`, { method: "DELETE" });
-    const ids = readLocalJson<string[]>(CV_IDS_KEY, []).filter((id) => id !== cvId);
-    writeLocalJson(CV_IDS_KEY, ids);
+    const idsKey = await scopedKey("cvIds");
+    const ids = readLocalJson<string[]>(idsKey, []).filter((id) => id !== cvId);
+    writeLocalJson(idsKey, ids);
   },
 
   listCvs: async <T = unknown>() => {
-    const ids = readLocalJson<string[]>(CV_IDS_KEY, []);
+    const ids = readLocalJson<string[]>(await scopedKey("cvIds"), []);
     const records = await Promise.all(
       ids.map((id) => requestJson<T>(`/cvs/${id}`).catch(() => null))
     );
     return records.filter((record) => record !== null) as T[];
   },
 
-  analyzeCv: async <T = unknown>(cvId: string) =>
-    requestJson<T>("/cv-analyses", {
+  analyzeCv: async (cvId: string): Promise<CVAnalysisPayload> =>
+    validateCvAnalysis(await requestJson<unknown>("/cv-analyses", {
       method: "POST",
       body: JSON.stringify({ cv_id: cvId }),
-    }),
+    })),
 
-  listJobs: async <T = unknown>(query?: {
+  listJobs: async (query?: {
     query?: string;
     location?: string;
     level?: string;
     page?: number;
     page_size?: number;
-  }) =>
-    requestJson<T>("/jobs", {
+  }): Promise<JobPosting[]> =>
+    normalizeJobList(await requestJson<unknown>("/jobs", {
       query: {
         query: query?.query,
         location: query?.location,
@@ -225,52 +253,72 @@ export const api = {
         page: query?.page,
         page_size: query?.page_size,
       },
-    }),
+    })),
 
-  getJob: async <T = unknown>(jobId: string) => requestJson<T>(`/jobs/${jobId}`),
+  getJob: async (jobId: string): Promise<JobPosting> =>
+    normalizeJob(await requestJson<unknown>(`/jobs/${jobId}`)),
 
-  fitScore: async <T = unknown>(cvId: string, jobId: string) =>
-    requestJson<T>("/fit-scores", {
+  fitScore: async (cvId: string, jobId: string): Promise<FitScoreResult> =>
+    validateFitScore(await requestJson<unknown>("/fit-scores", {
       method: "POST",
       body: JSON.stringify({ cv_id: cvId, job_id: jobId }),
-    }),
+    })),
 
-  recommendations: async <T = unknown>(cvId: string, jobId: string) =>
-    requestJson<T>("/recommendations", {
+  recommendations: async (cvId: string, jobId: string): Promise<RecommendationResult> =>
+    validateRecommendations(await requestJson<unknown>("/recommendations", {
       method: "POST",
       body: JSON.stringify({ cv_id: cvId, job_id: jobId }),
-    }),
+    })),
+
+  getLastCvId: async () => {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem(await scopedKey("lastCvId"));
+  },
 
   tracker: {
-    list: async <T = unknown>() => readLocalJson<T[]>(APPLICATIONS_KEY, []),
+    list: async <T = unknown>() =>
+      readLocalJson<T[]>(await scopedKey("applications"), []),
     add: async <T extends object>(application: T & { id?: string }) => {
-      const stored = readLocalJson<T[]>(APPLICATIONS_KEY, []);
+      const key = await scopedKey("applications");
+      const stored = readLocalJson<T[]>(key, []);
       const next = {
         ...application,
         id: application.id || crypto.randomUUID(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      writeLocalJson(APPLICATIONS_KEY, [next, ...stored]);
+      writeLocalJson(key, [next, ...stored]);
       return next;
     },
     update: async <T extends { id: string }>(id: string, patch: Partial<T>) => {
-      const stored = readLocalJson<T[]>(APPLICATIONS_KEY, []);
+      const key = await scopedKey("applications");
+      const stored = readLocalJson<T[]>(key, []);
       const next = stored.map((item) =>
         item.id === id ? { ...item, ...patch, updated_at: new Date().toISOString() } : item
       );
-      writeLocalJson(APPLICATIONS_KEY, next);
+      writeLocalJson(key, next);
     },
     delete: async <T extends { id: string }>(id: string) => {
-      const stored = readLocalJson<T[]>(APPLICATIONS_KEY, []);
-      writeLocalJson(APPLICATIONS_KEY, stored.filter((item) => item.id !== id));
+      const key = await scopedKey("applications");
+      const stored = readLocalJson<T[]>(key, []);
+      writeLocalJson(key, stored.filter((item) => item.id !== id));
+    },
+  },
+
+  savedJobs: {
+    list: async () => readLocalJson<string[]>(await scopedKey("savedJobs"), []),
+    add: async (jobId: string) => {
+      const key = await scopedKey("savedJobs");
+      const saved = readLocalJson<string[]>(key, []);
+      writeLocalJson(key, [jobId, ...saved.filter((id) => id !== jobId)]);
     },
   },
 
   profile: {
-    get: async <T = unknown>() => readLocalJson<Partial<T>>(PROFILE_KEY, {}),
+    get: async <T = unknown>() =>
+      readLocalJson<Partial<T>>(await scopedKey("profile"), {}),
     save: async <T = unknown>(profile: Partial<T>) => {
-      writeLocalJson(PROFILE_KEY, profile);
+      writeLocalJson(await scopedKey("profile"), profile);
       return profile;
     },
   },
@@ -279,14 +327,4 @@ export const api = {
     throw new Error("Backend MVP hiện chưa hỗ trợ xuất PDF.");
   },
 
-  streamChat: async (
-    _body?: {
-      session_id?: string;
-      message: string;
-      context_type?: string;
-      context_id?: string;
-    }
-  ): Promise<{ reader: ReadableStreamDefaultReader<Uint8Array>; sessionId: string }> => {
-    throw new Error("Chat streaming is not connected in this frontend build.");
-  },
 };

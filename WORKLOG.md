@@ -36,3 +36,28 @@ Safety:
 - Backend source was not changed.
 - Course logging infrastructure was not changed.
 - Environment files were not added to the commit scope.
+
+## Frontend Data Correctness Hardening
+
+Decision:
+
+- Preserve the teammate UI/UX while making browser-only state and unavailable MVP capabilities explicit.
+- Normalize and validate backend responses before rendering them.
+
+Completed:
+
+- Mapped backend job fields `skills` and `apply_url` to the existing teammate view model.
+- Disabled apply links for missing, unavailable, or seeded sample URLs.
+- Scoped profile, applications, saved jobs, and CV browser state by Supabase user ID with `demo-user` fallback.
+- Marked CV edits and suggestion application as local preview state, not server persistence.
+- Updated profile, application, and saved-job messages to state that data is stored locally.
+- Disabled chat inputs because the MVP backend has no chat endpoint.
+- Replaced realtime, sector, and salary claims with labels grounded in the currently available job records.
+- Added manual runtime validation and nested/plain-text API error extraction.
+- Added Node built-in pure-function tests for job normalization, storage isolation, validators, and error extraction.
+
+Safety:
+
+- Teammate layout, colors, spacing, typography, cards, icons, animations, and page hierarchy were preserved.
+- Backend application code and course logging hooks were not changed.
+- No environment files or secrets were added.

@@ -46,7 +46,7 @@ export default function ProfilePage() {
         target_locations: profile.target_locations,
       };
       await api.profile.save<Profile>(nextProfile);
-      toast.success("Đã lưu hồ sơ");
+      toast.success("Đã lưu hồ sơ trên trình duyệt này");
     } catch {
       toast.error("Không thể lưu");
     } finally {
@@ -70,7 +70,7 @@ export default function ProfilePage() {
         skills: [...(profile.skills || []), skill],
       });
       setNewSkill({ name: "", category: "primary", level: "intermediate" });
-      toast.success("Đã thêm kỹ năng");
+      toast.success("Đã thêm kỹ năng vào hồ sơ cục bộ");
     } catch {
       toast.error("Không thêm được kỹ năng");
     } finally {
@@ -119,6 +119,9 @@ export default function ProfilePage() {
 
       {activeTab === "basic" && (
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-5">
+          <p className="text-xs text-gray-400">
+            Dữ liệu này chỉ lưu trên trình duyệt hiện tại.
+          </p>
           {[
             { key: "full_name", label: "Họ và tên", placeholder: "Nguyễn Văn A" },
             { key: "location", label: "Địa điểm", placeholder: "TP. Hồ Chí Minh" },

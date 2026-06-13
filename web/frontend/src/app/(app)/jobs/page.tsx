@@ -1,8 +1,9 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { JobPosting, SOURCE_LABELS, formatSalary } from "@/lib/types";
+import { canApplyToJob } from "@/lib/contracts";
 import toast from "react-hot-toast";
 import {
   Search, MapPin, Bookmark, ExternalLink, Briefcase,
@@ -54,6 +55,10 @@ export default function JobsPage() {
   const [searched, setSearched] = useState(false);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
 
+  useEffect(() => {
+    api.savedJobs.list().then((ids) => setSavedIds(new Set(ids)));
+  }, []);
+
   const search = useCallback(
     async (q?: string) => {
       const searchQuery = q ?? query;
@@ -65,17 +70,11 @@ export default function JobsPage() {
       setLoading(true);
       setSearched(true);
       try {
-        const result = await api.listJobs<
-          | JobPosting[]
-          | { jobs?: JobPosting[]; items?: JobPosting[] }
-        >({
+        const nextJobs = await api.listJobs({
           query: searchQuery,
           location: location || undefined,
           page_size: 30,
         });
-        const nextJobs = Array.isArray(result)
-          ? result
-          : result.jobs || result.items || [];
         const filteredJobs =
           selectedSources.length > 0
             ? nextJobs.filter((job) => selectedSources.includes(job.source))
@@ -109,8 +108,9 @@ export default function JobsPage() {
         source_url: job.url,
         status: "bookmarked",
       });
+      await api.savedJobs.add(job.id);
       setSavedIds((prev) => new Set(prev).add(job.id));
-      toast.success("Đã lưu việc làm");
+      toast.success("Đã lưu vào danh sách cục bộ");
     } catch {
       toast.error("Không thể lưu việc làm");
     }
@@ -290,7 +290,7 @@ export default function JobsPage() {
                       <button
                         onClick={() => saveJob(job)}
                         disabled={saved}
-                        title={saved ? "Đã lưu" : "Lưu việc làm"}
+                        title={saved ? "Đã lưu cục bộ" : "Lưu việc làm cục bộ"}
                         className={`w-9 h-9 flex items-center justify-center rounded-xl border transition-colors cursor-pointer ${
                           saved
                             ? "border-slate-900 bg-slate-900 text-white"
@@ -299,15 +299,25 @@ export default function JobsPage() {
                       >
                         <Bookmark className={`w-4 h-4 ${saved ? "fill-white" : ""}`} />
                       </button>
-                      <a
-                        href={job.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Ứng tuyển trên trang gốc"
-                        className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:border-slate-400 hover:text-slate-900 transition-colors"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
+                      {canApplyToJob(job) ? (
+                        <a
+                          href={job.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Ứng tuyển trên trang gốc"
+                          className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:border-slate-400 hover:text-slate-900 transition-colors"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      ) : (
+                        <button
+                          disabled
+                          title="Liên kết ứng tuyển chưa khả dụng"
+                          className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-300 cursor-not-allowed"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </button>
+                      )}
                       <Link
                         href={`/jobs/${job.id}`}
                         className="hidden sm:inline-flex items-center px-4 h-9 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors"

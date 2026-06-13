@@ -108,7 +108,7 @@ export default function DashboardPage() {
   const quickActions = [
     { href: "/jobs", Icon: Search, label: "Tìm kiếm việc làm", desc: "Tổng hợp từ 4 cổng tuyển dụng VN" },
     { href: "/cv", Icon: FileText, label: "Tạo hoặc chỉnh CV", desc: "AI phân tích và đề xuất cải thiện" },
-    { href: "/analytics", Icon: TrendingUp, label: "Xu hướng thị trường", desc: "Kỹ năng và mức lương đang hot" },
+    { href: "/analytics", Icon: TrendingUp, label: "Xu hướng thị trường", desc: "Kỹ năng từ dữ liệu việc làm hiện có" },
   ];
 
   return (

@@ -54,12 +54,9 @@ export default function OnboardingPage() {
   const [analysis, setAnalysis] = useState<CVAnalysisResult | null>(null);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [chatInput, setChatInput] = useState("");
-  const [streaming, setStreaming] = useState(false);
   const [userName, setUserName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const chatInputRef = useRef<HTMLInputElement>(null);
   const prevActiveSectionRef = useRef<string | null>(null);
   const dragDepth = useRef(0);
 
@@ -152,41 +149,6 @@ export default function OnboardingPage() {
       setStep("welcome");
     }
   }, []);
-
-  async function sendMessage(overrideText?: string) {
-    const text = (overrideText ?? chatInput).trim();
-    if (!text || streaming) return;
-    setChatInput("");
-    setStreaming(true);
-
-    const userMsg: Message = { id: Date.now().toString(), role: "user", content: text };
-    setMessages((m) => [...m, userMsg, { id: "streaming", role: "ai", content: "" }]);
-
-    try {
-      const { reader } = await api.streamChat({
-        message: text,
-        context_type: "cv_onboarding",
-        context_id: activeSection || undefined,
-      });
-      const decoder = new TextDecoder();
-      let full = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        full += decoder.decode(value, { stream: true });
-        setMessages((m) =>
-          m.map((msg) => (msg.id === "streaming" ? { ...msg, content: full } : msg))
-        );
-      }
-      setMessages((m) =>
-        m.map((msg) => (msg.id === "streaming" ? { ...msg, id: Date.now().toString() } : msg))
-      );
-    } catch {
-      setMessages((m) => m.filter((msg) => msg.id !== "streaming"));
-    } finally {
-      setStreaming(false);
-    }
-  }
 
   function handleWelcomeSend(message: string, files?: File[]) {
     if (files && files.length > 0) {
@@ -531,8 +493,9 @@ export default function OnboardingPage() {
             ].map((q) => (
               <button
                 key={q}
-                onClick={() => { setChatInput(q); }}
-                className="text-xs text-[#9CA3AF] bg-[#1F2023] hover:bg-[#2a2b2e] border border-[#333333] px-3 py-1.5 rounded-full transition-colors cursor-pointer"
+                disabled
+                title="Chat chưa được kết nối trong MVP này"
+                className="text-xs text-[#6B7280] bg-[#1F2023] border border-[#333333] px-3 py-1.5 rounded-full cursor-not-allowed"
               >
                 {q}
               </button>
@@ -542,9 +505,8 @@ export default function OnboardingPage() {
           {/* PromptInputBox */}
           <div className="px-4 pb-4 shrink-0">
             <PromptInputBox
-              isLoading={streaming}
-              placeholder="Hỏi thêm về CV của bạn..."
-              onSend={(message) => sendMessage(message)}
+              disabled
+              placeholder="Chat chưa được kết nối trong MVP này"
             />
           </div>
         </div>

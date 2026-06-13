@@ -1,9 +1,8 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { MessageSquare, X, Sparkles } from "lucide-react";
 import clsx from "clsx";
-import { api } from "@/lib/api";
 import { PromptInputBox } from "@/components/ui/ai-prompt-box";
 
 export const CHAT_PANEL_WIDTH = 420;
@@ -91,8 +90,6 @@ export default function ChatDock({
 }) {
   const pathname = usePathname();
   const [messages, setMessages] = useState<Msg[]>([]);
-  const [streaming, setStreaming] = useState(false);
-  const [sessionId, setSessionId] = useState<string | undefined>();
   const endRef = useRef<HTMLDivElement>(null);
 
   const ctx = pageContext(pathname);
@@ -100,7 +97,6 @@ export default function ChatDock({
   // New page context = fresh conversation grounded in that page
   useEffect(() => {
     setMessages([]);
-    setSessionId(undefined);
   }, [ctx.type, ctx.id]);
 
   useEffect(() => {
@@ -122,46 +118,6 @@ export default function ChatDock({
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  const send = useCallback(
-    async (text: string) => {
-      const message = text.trim();
-      if (!message || streaming) return;
-      setStreaming(true);
-      setMessages((m) => [
-        ...m,
-        { id: Date.now().toString(), role: "user", content: message },
-        { id: "streaming", role: "ai", content: "" },
-      ]);
-      try {
-        const { reader, sessionId: sid } = await api.streamChat({
-          session_id: sessionId,
-          message,
-          context_type: ctx.type,
-          context_id: ctx.id,
-        });
-        if (!sessionId && sid) setSessionId(sid);
-        const decoder = new TextDecoder();
-        let full = "";
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          full += decoder.decode(value, { stream: true });
-          setMessages((m) =>
-            m.map((msg) => (msg.id === "streaming" ? { ...msg, content: full } : msg))
-          );
-        }
-        setMessages((m) =>
-          m.map((msg) => (msg.id === "streaming" ? { ...msg, id: Date.now().toString() } : msg))
-        );
-      } catch {
-        setMessages((m) => m.filter((msg) => msg.id !== "streaming"));
-      } finally {
-        setStreaming(false);
-      }
-    },
-    [streaming, sessionId, ctx.type, ctx.id]
-  );
 
   return (
     <>
@@ -204,14 +160,15 @@ export default function ChatDock({
                 Hỏi về {ctx.label.toLowerCase()}
               </p>
               <p className="text-xs text-slate-400 mt-1 mb-8 leading-relaxed max-w-[260px]">
-                Tôi nắm được ngữ cảnh trang bạn đang xem và trả lời dựa trên đó.
+                Chat chưa được kết nối trong MVP này.
               </p>
               <div className="w-full space-y-2">
                 {ctx.prompts.map((p) => (
                   <button
                     key={p}
-                    onClick={() => send(p)}
-                    className="w-full text-left text-[13px] text-slate-600 border border-slate-200 hover:border-slate-400 hover:text-slate-900 rounded-xl px-4 py-3 transition-colors cursor-pointer"
+                    disabled
+                    title="Chat chưa được kết nối trong MVP này"
+                    className="w-full text-left text-[13px] text-slate-400 border border-slate-200 rounded-xl px-4 py-3 cursor-not-allowed"
                   >
                     {p}
                   </button>
@@ -254,9 +211,8 @@ export default function ChatDock({
         <div className="p-4 border-t border-slate-200/70 shrink-0">
           <PromptInputBox
             simple
-            isLoading={streaming}
-            placeholder={`Hỏi về ${ctx.label.toLowerCase()}...`}
-            onSend={(m) => send(m)}
+            disabled
+            placeholder="Chat chưa được kết nối trong MVP này"
           />
         </div>
       </aside>

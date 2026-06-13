@@ -29,5 +29,14 @@
     "src/**/*.ts",
     "src/**/*.tsx"
   ],
-  "exclude": ["node_modules", "_legacy_app", "app", "components", "lib", "web_copy", "web copy"]
+  "exclude": [
+    "node_modules",
+    "src/**/*.test.ts",
+    "_legacy_app",
+    "app",
+    "components",
+    "lib",
+    "web_copy",
+    "web copy"
+  ]
 }

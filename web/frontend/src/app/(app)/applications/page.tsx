@@ -156,7 +156,7 @@ export default function ApplicationsPage() {
       setApps((prev) =>
         prev.map((a) => (a.id === id ? { ...a, status: status as Application["status"] } : a))
       );
-      toast.success("Đã cập nhật");
+      toast.success("Đã cập nhật danh sách cục bộ");
     } catch {
       toast.error("Không cập nhật được");
     }
@@ -166,7 +166,7 @@ export default function ApplicationsPage() {
     if (!confirm("Xóa đơn ứng tuyển này?")) return;
     await api.tracker.delete<Application>(id);
     setApps((prev) => prev.filter((a) => a.id !== id));
-    toast.success("Đã xóa");
+    toast.success("Đã xóa khỏi danh sách cục bộ");
   }
 
   const byStatus = STATUSES.reduce((acc, s) => {
@@ -182,6 +182,9 @@ export default function ApplicationsPage() {
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Ứng tuyển</h1>
           <p className="text-slate-400 mt-1.5 text-sm">
             {apps.length > 0 ? `${apps.length} đơn đang theo dõi` : "Quản lý toàn bộ hành trình ứng tuyển"}
+          </p>
+          <p className="text-slate-300 mt-1 text-xs">
+            Dữ liệu này chỉ lưu trên trình duyệt hiện tại.
           </p>
         </div>
         <div className="flex items-center gap-1 border border-slate-200 p-1 rounded-xl bg-white">

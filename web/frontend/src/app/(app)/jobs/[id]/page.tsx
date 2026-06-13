@@ -4,18 +4,11 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { JobPosting, FitEvaluation, SOURCE_LABELS, formatSalary } from "@/lib/types";
+import { canApplyToJob, FitScoreResult } from "@/lib/contracts";
 import toast from "react-hot-toast";
 import { ArrowLeft, MapPin, Sparkles, CheckCircle2, AlertCircle, Lightbulb, ExternalLink } from "lucide-react";
 
-interface FitResult {
-  score_total: number;
-  score_breakdown?: Array<{ label: string; score: number; notes?: string }>;
-  matched_skills?: string[];
-  missing_skills?: string[];
-  explanation?: string;
-}
-
-function toFitEvaluation(result: FitResult): FitEvaluation {
+function toFitEvaluation(result: FitScoreResult): FitEvaluation {
   const breakdown = result.score_breakdown || [];
   const findScore = (label: string) =>
     breakdown.find((item) => item.label.toLowerCase().includes(label))?.score ?? result.score_total;
@@ -62,8 +55,8 @@ export default function JobDetailPage() {
   const [cvId, setCvId] = useState<string | null>(null);
 
   useEffect(() => {
-    setCvId(window.localStorage.getItem("vica:lastCvId"));
-    api.getJob<JobPosting>(id)
+    api.getLastCvId().then(setCvId);
+    api.getJob(id)
       .then(setJob)
       .catch(() => toast.error("Không tải được thông tin việc làm"))
       .finally(() => setLoadingJob(false));
@@ -77,7 +70,7 @@ export default function JobDetailPage() {
     }
     setLoadingEval(true);
     try {
-      const result = await api.fitScore<FitResult>(cvId, id);
+      const result = await api.fitScore(cvId, id);
       setEvaluation(toFitEvaluation(result));
     } catch (e: any) {
       toast.error(e.message || "Có lỗi khi đánh giá");
@@ -91,7 +84,7 @@ export default function JobDetailPage() {
     setSaving(true);
     try {
       await api.tracker.add({ job_posting_id: job.id, company_name: job.company, role_title: job.title, source_url: job.url, status: "applied", fit_score: evaluation?.overall_score, fit_evaluation: evaluation });
-      toast.success("Đã thêm vào danh sách ứng tuyển");
+      toast.success("Đã lưu vào danh sách cục bộ");
       router.push("/applications");
     } catch {
       toast.error("Không thể lưu đơn ứng tuyển");
@@ -142,9 +135,15 @@ export default function JobDetailPage() {
           <button onClick={apply} disabled={saving} className="border border-slate-200 text-slate-700 hover:bg-slate-50 px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-150 cursor-pointer">
             {saving ? "Đang lưu..." : "Lưu vào tracker"}
           </button>
-          <a href={job.url} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-150">
-            <ExternalLink className="w-4 h-4" /> Xem bản gốc
-          </a>
+          {canApplyToJob(job) ? (
+            <a href={job.url} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-150">
+              <ExternalLink className="w-4 h-4" /> Xem bản gốc
+            </a>
+          ) : (
+            <button disabled title="Liên kết ứng tuyển chưa khả dụng" className="ml-auto inline-flex items-center gap-1.5 border border-slate-200 text-slate-300 px-5 py-2.5 rounded-xl font-medium text-sm cursor-not-allowed">
+              <ExternalLink className="w-4 h-4" /> Chưa có link ứng tuyển
+            </button>
+          )}
         </div>
       </div>
 

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { CV, CVSuggestion } from "@/lib/types";
+import { CVAnalysisPayload, RecommendationResult } from "@/lib/contracts";
 import toast from "react-hot-toast";
 import clsx from "clsx";
 
@@ -12,19 +13,7 @@ type CvRecord = Partial<CV> & {
   summary?: string;
 };
 
-type AnalysisResponse = {
-  sections?: Array<{
-    id?: string;
-    title?: string;
-    issues?: string[];
-    suggestions?: string[];
-  }>;
-  suggestions?: Array<{
-    target_section?: string;
-    action?: string;
-    reason?: string;
-  }>;
-};
+type AnalysisResponse = CVAnalysisPayload | RecommendationResult;
 
 function normalizeCv(record: CvRecord): CV {
   const now = new Date().toISOString();
@@ -57,7 +46,7 @@ function toSuggestions(result: AnalysisResponse): CVSuggestion[] {
     }));
   }
 
-  return (result.sections || []).flatMap((section, sectionIndex) =>
+  return ("sections" in result ? result.sections : []).flatMap((section, sectionIndex) =>
     (section.suggestions || []).map((suggestion, suggestionIndex) => ({
       id: `${section.id || sectionIndex}-${suggestionIndex}`,
       section: section.title,
@@ -119,8 +108,8 @@ export default function CVEditorPage() {
     setAnalyzing(true);
     try {
       const result = jobId
-        ? await api.recommendations<AnalysisResponse>(id, jobId)
-        : await api.analyzeCv<AnalysisResponse>(id);
+        ? await api.recommendations(id, jobId)
+        : await api.analyzeCv(id);
       const nextSuggestions = toSuggestions(result);
       setSuggestions(nextSuggestions);
       setActiveTab("suggestions");
@@ -138,7 +127,8 @@ export default function CVEditorPage() {
     try {
       setSuggestions((prev) => prev.filter((s) => !selectedSuggestions.has(s.id)));
       setSelectedSuggestions(new Set());
-      toast.success("Đã áp dụng các gợi ý");
+      toast.success("Đã ghi nhận trong phiên xem trước");
+      toast("Thay đổi này chưa được lưu lên server", { icon: "ℹ️" });
     } catch {
       toast.error("Không áp dụng được");
     } finally {
@@ -217,6 +207,12 @@ export default function CVEditorPage() {
       <div className="flex-1 overflow-y-auto p-8">
         {activeTab === "editor" && (
           <div className="max-w-2xl space-y-6">
+            <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
+              <p className="text-amber-800 text-sm font-medium">Bản nháp xem trước cục bộ</p>
+              <p className="text-amber-700 text-xs mt-1">
+                Các chỉnh sửa bên dưới chưa được lưu lên server vì MVP chưa có API cập nhật CV.
+              </p>
+            </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">Tiêu đề CV</label>
               <input
@@ -298,7 +294,7 @@ export default function CVEditorPage() {
                         disabled={applying}
                         className="bg-brand-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium"
                       >
-                        {applying ? "Đang áp dụng..." : `Áp dụng (${selectedSuggestions.size})`}
+                        {applying ? "Đang ghi nhận..." : `Ghi nhận (${selectedSuggestions.size})`}
                       </button>
                     )}
                   </div>
