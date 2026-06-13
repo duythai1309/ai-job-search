@@ -47,3 +47,23 @@ class JobsListResponse(StrictSchema):
 class JobDetailResponse(StrictSchema):
     data: JobRecord
     meta: dict = Field(default_factory=dict)
+
+
+class JobIngestionRequest(StrictSchema):
+    sources: list[str] = Field(default_factory=lambda: ["seed"])
+    limit: int | None = Field(default=None, ge=1, le=500)
+
+
+class JobIngestionSummary(StrictSchema):
+    fetched_count: int
+    accepted_count: int
+    rejected_count: int
+    inserted_count: int
+    updated_count: int
+    error_count: int
+    sources: list[str]
+
+
+class JobIngestionResponse(StrictSchema):
+    data: JobIngestionSummary
+    meta: dict = Field(default_factory=dict)

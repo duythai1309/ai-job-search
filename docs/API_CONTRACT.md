@@ -153,6 +153,15 @@ must not be interpreted as completed feature behavior.
 
 All user-owned CV endpoints require authentication. Job browse may be public for the demo, while scoring and recommendations require access to the referenced CV.
 
+### Job ingestion
+
+- `POST /api/v1/jobs/ingest` accepts `sources` and optional `limit`.
+- The default safe source is `seed`.
+- Live sources return `409 live_job_ingestion_disabled` unless explicitly enabled.
+- The response reports fetched, accepted, rejected, inserted, updated, and error counts.
+- Ingestion persists through `JobsRepository`; routes and source adapters never access Supabase directly.
+- LinkedIn live scraping is disabled. Only future manual/public URL import or an approved API is allowed.
+
 ## Legacy Reference Requirement
 
 Every stub-to-real endpoint conversion must begin by locating its functional

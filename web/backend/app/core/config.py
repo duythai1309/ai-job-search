@@ -22,6 +22,11 @@ class Settings:
     supabase_anon_key: str
     supabase_service_role_key: str
     enable_live_job_scraping: bool = False
+    enable_live_job_ingestion: bool = False
+    enable_job_ingestion_endpoint: bool = False
+    job_ingestion_sources: tuple[str, ...] = ("seed",)
+    job_ingestion_max_results: int = 50
+    job_ingestion_timeout_seconds: float = 10.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +51,13 @@ def get_settings() -> Settings:
         missing_list = ", ".join(missing)
         raise ConfigError(f"Missing required environment variables: {missing_list}")
 
+    max_results = int(os.getenv("JOB_INGESTION_MAX_RESULTS", "50"))
+    timeout_seconds = float(os.getenv("JOB_INGESTION_TIMEOUT_SECONDS", "10"))
+    sources = tuple(
+        item.strip().casefold()
+        for item in os.getenv("JOB_INGESTION_SOURCES", "seed").split(",")
+        if item.strip()
+    )
     return Settings(
         supabase_url=_read_required_env("SUPABASE_URL"),
         supabase_anon_key=_read_required_env("SUPABASE_ANON_KEY"),
@@ -54,6 +66,17 @@ def get_settings() -> Settings:
             "ENABLE_LIVE_JOB_SCRAPING", ""
         ).strip().casefold()
         in {"1", "true", "yes", "on"},
+        enable_live_job_ingestion=os.getenv(
+            "ENABLE_LIVE_JOB_INGESTION", ""
+        ).strip().casefold()
+        in {"1", "true", "yes", "on"},
+        enable_job_ingestion_endpoint=os.getenv(
+            "ENABLE_JOB_INGESTION_ENDPOINT", ""
+        ).strip().casefold()
+        in {"1", "true", "yes", "on"},
+        job_ingestion_sources=sources or ("seed",),
+        job_ingestion_max_results=max(1, min(max_results, 500)),
+        job_ingestion_timeout_seconds=max(0.1, timeout_seconds),
     )
 
 

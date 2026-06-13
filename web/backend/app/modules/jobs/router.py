@@ -6,7 +6,17 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 
 from app.core.responses import APIErrorResponse
-from app.modules.jobs.schemas import JobDetailResponse, JobsListResponse
+from app.modules.jobs.ingestion_service import (
+    JobIngestionService,
+    IngestionEndpointDisabledError,
+    LiveIngestionDisabledError,
+)
+from app.modules.jobs.schemas import (
+    JobDetailResponse,
+    JobIngestionRequest,
+    JobIngestionResponse,
+    JobsListResponse,
+)
 from app.modules.jobs.service import JobNotFoundError, JobsService
 
 
@@ -15,6 +25,10 @@ router = APIRouter(prefix="/jobs", tags=["jobs"])
 
 def get_jobs_service() -> JobsService:
     return JobsService()
+
+
+def get_job_ingestion_service() -> JobIngestionService:
+    return JobIngestionService()
 
 
 @router.get("", response_model=JobsListResponse)
@@ -31,6 +45,29 @@ def list_jobs(
         role_type=role_type.strip(),
         limit=limit,
     )
+
+
+@router.post("/ingest", response_model=JobIngestionResponse)
+def ingest_jobs(
+    body: JobIngestionRequest,
+    service: JobIngestionService = Depends(get_job_ingestion_service),
+) -> JobIngestionResponse | JSONResponse:
+    try:
+        return service.ingest(body.sources, body.limit)
+    except IngestionEndpointDisabledError:
+        error = APIErrorResponse(
+            code="job_ingestion_disabled",
+            message="Job ingestion endpoint is disabled.",
+            request_id=str(uuid4()),
+        )
+        return JSONResponse(status_code=404, content=error.model_dump())
+    except LiveIngestionDisabledError as exc:
+        error = APIErrorResponse(
+            code="live_job_ingestion_disabled",
+            message=f"Live ingestion is disabled for source: {exc}.",
+            request_id=str(uuid4()),
+        )
+        return JSONResponse(status_code=409, content=error.model_dump())
 
 
 @router.get("/{job_id}", response_model=JobDetailResponse)

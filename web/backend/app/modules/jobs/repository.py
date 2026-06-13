@@ -39,3 +39,17 @@ class JobsRepository:
         except Exception as exc:
             raise JobsRepositoryError("Job lookup failed.") from exc
         return response.data
+
+    def upsert_jobs(self, jobs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        if not jobs:
+            return []
+        try:
+            response = (
+                self._client_provider()
+                .table("job_postings")
+                .upsert(jobs, on_conflict="source,source_job_id")
+                .execute()
+            )
+        except Exception as exc:
+            raise JobsRepositoryError("Job ingestion persistence failed.") from exc
+        return response.data or []

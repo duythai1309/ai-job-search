@@ -206,6 +206,11 @@ Do not start with cover letter, Critic Agent, LaTeX, or PDF export unless the MV
 
 ## Implementation Status
 
+- Safe Supabase job ingestion now reuses `job_postings` through `JobsRepository`.
+- Migration `0006_add_job_ingestion_fields.sql` adds only `source_job_id`, `raw_payload`, and dedupe indexes.
+- Seed ingestion is enabled; TopCV, ITViec, VietnamWorks, CareerViet, and LinkedIn adapters contain no live network implementation and remain disabled by default.
+- Ingestion accepts only Data/AI/IT/software and related intern/fresher roles, with deterministic dedupe.
+
 - The backend modular shell has been established under `web/backend`.
 - The `/api/v1/health` route is now wrapped through `app/modules/health/router.py`.
 - The health response shape remains unchanged for compatibility.
