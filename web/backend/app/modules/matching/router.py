@@ -23,7 +23,9 @@ def create_fit_scores(
     service: MatchingService = Depends(get_matching_service),
 ) -> FitScoresResponse | JSONResponse:
     try:
-        return service.calculate(request.analysis_id, request.job_ids)
+        if request.analysis_id is not None:
+            return service.calculate(request.analysis_id, request.job_ids)
+        return service.calculate_for_cv(request.cv_id, request.job_id or "")
     except MatchingError as exc:
         error = APIErrorResponse(
             code=exc.code,

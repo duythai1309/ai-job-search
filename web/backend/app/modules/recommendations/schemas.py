@@ -35,7 +35,8 @@ class RecommendationRecord(StrictSchema):
     cv_id: UUID
     job_id: str
     suggestions: list[RecommendationSuggestion]
-    priority: Literal["high", "medium", "low"]
+    priority: list[str]
+    priority_level: Literal["high", "medium", "low"]
     evidence_links: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     schema_version: Literal["recommendation_v1"]

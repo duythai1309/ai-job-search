@@ -69,6 +69,18 @@ class CvAnalysisRecord(StrictSchema):
     cv_id: UUID
     schema_version: Literal["candidate_profile_v1"]
     profile: CandidateProfileV1
+    overall_score: int = Field(ge=0, le=100)
+    top_priorities: list[str] = Field(default_factory=list)
+    sections: list["CvAnalysisSection"] = Field(default_factory=list)
+
+
+class CvAnalysisSection(StrictSchema):
+    id: str
+    title: str
+    content_preview: str
+    score: int = Field(ge=0, le=10)
+    issues: list[str] = Field(default_factory=list)
+    suggestions: list[str] = Field(default_factory=list)
 
 
 class CvAnalysisMeta(StrictSchema):

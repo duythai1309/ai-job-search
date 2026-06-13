@@ -29,5 +29,17 @@ class FallbackStore:
         with self._lock:
             return getattr(self, collection).pop(str(record_id), None) is not None
 
+    def latest_by(self, collection: str, field: str, value: str) -> dict[str, Any] | None:
+        with self._lock:
+            records = [
+                record
+                for record in getattr(self, collection).values()
+                if str(record.get(field)) == str(value)
+            ]
+            if not records:
+                return None
+            latest = max(records, key=lambda record: str(record.get("created_at", "")))
+            return dict(latest)
+
 
 fallback_store = FallbackStore()

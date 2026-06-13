@@ -62,6 +62,13 @@ class FakeMatchingRepository:
     def get_analysis(self, analysis_id):
         return self.analysis if self.analysis["id"] == analysis_id else None
 
+    def get_latest_analysis_for_cv(self, cv_id):
+        return (
+            self.analysis
+            if self.analysis is not None and self.analysis.get("cv_id") == cv_id
+            else None
+        )
+
     def create_matches(self, payloads):
         self.saved.extend(payloads)
         return [dict(payload) for payload in payloads]
@@ -82,6 +89,7 @@ class FakeJobsService:
 def matching_dependencies():
     analysis_id = uuid4()
     repository = FakeMatchingRepository(analysis_id)
+    repository.analysis["cv_id"] = str(uuid4())
     service = MatchingService(repository, FakeJobsService())
     app.dependency_overrides[get_matching_service] = lambda: service
     yield analysis_id, repository
@@ -104,6 +112,46 @@ def test_fit_score_endpoint_persists_multiple_deterministic_results(
     assert body["data"]["results"][0]["score"] > body["data"]["results"][1]["score"]
     assert body["meta"] == {"persisted": True, "count": 2}
     assert len(repository.saved) == 2
+
+
+def test_fit_score_single_old_request_includes_frontend_aliases(matching_dependencies):
+    analysis_id, _ = matching_dependencies
+
+    response = client.post(
+        "/api/v1/fit-scores",
+        json={"analysis_id": str(analysis_id), "job_ids": ["job-good"]},
+    )
+
+    assert response.status_code == 201
+    data = response.json()["data"]
+    assert data["score_total"] == data["results"][0]["score"]
+    assert data["job_id"] == "job-good"
+    assert data["score_breakdown"]
+
+
+def test_fit_score_accepts_frontend_cv_and_job_shape(matching_dependencies):
+    _, repository = matching_dependencies
+
+    response = client.post(
+        "/api/v1/fit-scores",
+        json={"cv_id": repository.analysis["cv_id"], "job_id": "job-good"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["data"]["score_total"] == response.json()["data"]["results"][0]["score"]
+
+
+def test_fit_score_frontend_shape_reports_missing_analysis(matching_dependencies):
+    _, repository = matching_dependencies
+    repository.analysis = None
+
+    response = client.post(
+        "/api/v1/fit-scores",
+        json={"cv_id": str(uuid4()), "job_id": "job-good"},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "analysis_not_found"
 
 
 def test_same_input_produces_same_score_and_fingerprint():

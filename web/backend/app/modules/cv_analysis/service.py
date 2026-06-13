@@ -16,6 +16,7 @@ from app.modules.cv_analysis.schemas import (
     CvAnalysisMeta,
     CvAnalysisRecord,
     CvAnalysisResponse,
+    CvAnalysisSection,
 )
 
 
@@ -125,9 +126,70 @@ class CvAnalysisService:
                 cv_id=persisted.get("cv_id", cv_id),
                 schema_version=SCHEMA_VERSION,
                 profile=profile,
+                overall_score=self._overall_score(profile),
+                top_priorities=self._top_priorities(profile),
+                sections=self._sections(profile),
             ),
             meta=CvAnalysisMeta(),
         )
+
+    @staticmethod
+    def _overall_score(profile: CandidateProfileV1) -> int:
+        skills = (
+            profile.skills.technical
+            + profile.skills.tools
+            + profile.skills.soft
+            + profile.skills.languages
+        )
+        return min(
+            100,
+            (20 if profile.summary.strip() else 0)
+            + min(25, len(skills) * 5)
+            + (15 if profile.education else 0)
+            + (20 if profile.experience else 0)
+            + (15 if profile.projects else 0)
+            + (5 if profile.target_roles else 0),
+        )
+
+    @staticmethod
+    def _top_priorities(profile: CandidateProfileV1) -> list[str]:
+        priorities = list(profile.gaps)
+        if not profile.experience:
+            priorities.append("Add verified work, internship, or project experience.")
+        if not profile.projects:
+            priorities.append("Add verified projects that demonstrate relevant skills.")
+        if not profile.target_roles:
+            priorities.append("Clarify the target role using evidence already in the CV.")
+        return list(dict.fromkeys(priorities))[:3]
+
+    @classmethod
+    def _sections(cls, profile: CandidateProfileV1) -> list[CvAnalysisSection]:
+        skills = (
+            profile.skills.technical
+            + profile.skills.tools
+            + profile.skills.soft
+            + profile.skills.languages
+        )
+        section_values = [
+            ("summary", "Professional summary", profile.summary, bool(profile.summary.strip())),
+            ("skills", "Skills", ", ".join(skills), bool(skills)),
+            ("experience", "Experience", f"{len(profile.experience)} verified item(s)", bool(profile.experience)),
+            ("education", "Education", f"{len(profile.education)} verified item(s)", bool(profile.education)),
+            ("projects", "Projects", f"{len(profile.projects)} verified item(s)", bool(profile.projects)),
+        ]
+        sections = []
+        for section_id, title, preview, present in section_values:
+            sections.append(
+                CvAnalysisSection(
+                    id=section_id,
+                    title=title,
+                    content_preview=preview[:240],
+                    score=10 if present else 0,
+                    issues=[] if present else [f"No verified {title.casefold()} content was found."],
+                    suggestions=[] if present else [f"Add {title.casefold()} content only when it is true and verifiable."],
+                )
+            )
+        return sections
 
     @staticmethod
     def _validate_profile(raw_output: str) -> CandidateProfileV1:

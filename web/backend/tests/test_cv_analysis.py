@@ -125,6 +125,15 @@ def test_create_cv_analysis_persists_validated_profile(analysis_dependencies):
     assert body["data"]["analysis_id"] == repository.analysis_records[0]["id"]
     assert body["data"]["schema_version"] == "candidate_profile_v1"
     assert body["data"]["profile"] == VALID_PROFILE
+    assert 0 <= body["data"]["overall_score"] <= 100
+    assert isinstance(body["data"]["top_priorities"], list)
+    assert {section["id"] for section in body["data"]["sections"]} == {
+        "summary",
+        "skills",
+        "experience",
+        "education",
+        "projects",
+    }
     assert body["meta"]["persisted"] is True
     assert body["error"] is None
     assert repository.analysis_records[0]["validation_state"] == "validated"

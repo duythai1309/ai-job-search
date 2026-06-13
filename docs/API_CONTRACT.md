@@ -162,6 +162,20 @@ All user-owned CV endpoints require authentication. Job browse may be public for
 - Ingestion persists through `JobsRepository`; routes and source adapters never access Supabase directly.
 - LinkedIn live scraping is disabled. Only future manual/public URL import or an approved API is allowed.
 
+### Frontend compatibility aliases
+
+- `GET /api/v1/jobs` accepts both `q` and `query`; `q` takes precedence.
+- It accepts both `limit` and `page_size`; `limit` takes precedence and values are clamped to 50.
+- `role_type` filters employment/role type, while `level` filters normalized job level.
+- Job records expose `skills`, `apply_url`, `is_seeded`, and `availability_status`.
+- `POST /api/v1/cv-analyses` preserves `analysis_id`, `cv_id`, and `profile` and also returns deterministic `overall_score`, `top_priorities`, and `sections`.
+- `POST /api/v1/fit-scores` accepts either `analysis_id` with `job_ids` or `cv_id` with `job_id`.
+- Single-job fit responses preserve `results` and add `score_total`, `job_id`, `score_breakdown`, `matched_skills`, `missing_skills`, and `explanation`.
+- Recommendation responses expose frontend-compatible `priority` tags and preserve the canonical scalar as `priority_level`.
+- Error responses preserve flat `code` and `message` and also include `{ "error": { "code", "message" } }`.
+
+CV routes currently use server-side/demo repository access without authenticated ownership enforcement. This remains an explicit MVP limitation and must be resolved before multi-user production use.
+
 ## Legacy Reference Requirement
 
 Every stub-to-real endpoint conversion must begin by locating its functional

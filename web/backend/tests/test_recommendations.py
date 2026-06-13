@@ -81,6 +81,8 @@ def test_recommendations_are_grounded_and_persisted(recommendation_dependencies)
     assert response.status_code == 201
     body = response.json()
     assert body["data"]["schema_version"] == "recommendation_v1"
+    assert body["data"]["priority"] in (["high"], ["medium"], ["low"])
+    assert body["data"]["priority_level"] == body["data"]["priority"][0]
     assert body["meta"]["generator"] == "grounded_deterministic_v1"
     assert repository.saved
     suggestions = body["data"]["suggestions"]
@@ -99,6 +101,10 @@ def test_recommendations_reject_unknown_fields(recommendation_dependencies):
     )
 
     assert response.status_code == 422
+    assert response.json()["error"] == {
+        "code": "invalid_request",
+        "message": "The request payload or parameters are invalid.",
+    }
 
 
 VALID_GENERATION = {

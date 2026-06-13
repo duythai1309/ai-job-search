@@ -34,16 +34,20 @@ def get_job_ingestion_service() -> JobIngestionService:
 @router.get("", response_model=JobsListResponse)
 def list_jobs(
     q: str = Query(default="", max_length=120),
+    query: str = Query(default="", max_length=120),
     location: str = Query(default="", max_length=120),
     role_type: str = Query(default="", max_length=80),
-    limit: int = Query(default=20, ge=1, le=50),
+    level: str = Query(default="", max_length=80),
+    limit: int | None = Query(default=None, ge=1, le=500),
+    page_size: int | None = Query(default=None, ge=1, le=500),
     service: JobsService = Depends(get_jobs_service),
 ) -> JobsListResponse:
     return service.list_jobs(
-        query=q.strip(),
+        query=(q or query).strip(),
         location=location.strip(),
         role_type=role_type.strip(),
-        limit=limit,
+        level=level.strip(),
+        limit=min(limit if limit is not None else page_size or 20, 50),
     )
 
 

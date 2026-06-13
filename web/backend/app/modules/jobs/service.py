@@ -30,6 +30,7 @@ class JobsService:
         query: str = "",
         location: str = "",
         role_type: str = "",
+        level: str = "",
         limit: int = 20,
     ) -> JobsListResponse:
         fallback_used = False
@@ -45,7 +46,7 @@ class JobsService:
         jobs = [
             self._normalize(job)
             for job in raw_jobs
-            if self._matches(job, query, location, role_type)
+            if self._matches(job, query, location, role_type, level)
         ][:limit]
         source_tier = min((job.source_tier for job in jobs), default=3)
         return JobsListResponse(
@@ -77,6 +78,7 @@ class JobsService:
         query: str,
         location: str,
         role_type: str,
+        level: str,
     ) -> bool:
         haystack = " ".join(
             [
@@ -90,10 +92,12 @@ class JobsService:
         job_role_type = str(
             job.get("role_type") or job.get("employment_type", "")
         ).casefold()
+        job_level = str(job.get("level", "")).casefold()
         return (
             (not query or query.casefold() in haystack)
             and (not location or location.casefold() in job_location)
             and (not role_type or role_type.casefold() in job_role_type)
+            and (not level or level.casefold() in job_level)
         )
 
     @staticmethod

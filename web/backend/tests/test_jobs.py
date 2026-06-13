@@ -84,6 +84,14 @@ def test_jobs_support_filters():
     assert client.get("/api/v1/jobs?role_type=intern").json()["meta"]["total"] == 1
 
 
+def test_jobs_support_frontend_query_aliases_and_old_param_precedence():
+    assert client.get("/api/v1/jobs?query=python").json()["meta"]["total"] == 1
+    assert client.get("/api/v1/jobs?level=student").json()["meta"]["total"] == 1
+    assert client.get("/api/v1/jobs?page_size=1").json()["meta"]["total"] == 1
+    assert client.get("/api/v1/jobs?page_size=100").status_code == 200
+    assert client.get("/api/v1/jobs?q=missing&query=python").json()["meta"]["total"] == 0
+
+
 def test_job_detail_uses_seed_fallback():
     response = client.get("/api/v1/jobs/seed-1")
 
@@ -96,6 +104,10 @@ def test_job_detail_returns_safe_not_found():
 
     assert response.status_code == 404
     assert response.json()["code"] == "job_not_found"
+    assert response.json()["error"] == {
+        "code": "job_not_found",
+        "message": "The job was not found.",
+    }
 
 
 def test_supabase_jobs_take_precedence():

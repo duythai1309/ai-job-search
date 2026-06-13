@@ -31,6 +31,24 @@ class MatchingRepository:
             raise MatchingRepositoryError("CV analysis lookup failed.") from exc
         return response.data
 
+    def get_latest_analysis_for_cv(self, cv_id: str) -> dict[str, Any] | None:
+        try:
+            response = (
+                self._client_provider()
+                .table("cv_analyses")
+                .select("id,cv_id,schema_version,profile_json,created_at")
+                .eq("cv_id", cv_id)
+                .order("created_at", desc=True)
+                .limit(1)
+                .maybe_single()
+                .execute()
+            )
+        except ConfigError:
+            return fallback_store.latest_by("cv_analyses", "cv_id", cv_id)
+        except Exception as exc:
+            raise MatchingRepositoryError("CV analysis lookup failed.") from exc
+        return response.data
+
     def create_matches(self, payloads: list[dict[str, Any]]) -> list[dict[str, Any]]:
         try:
             response = (

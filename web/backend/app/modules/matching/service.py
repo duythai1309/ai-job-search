@@ -10,6 +10,7 @@ from app.modules.jobs.service import JobNotFoundError, JobsService
 from app.modules.matching.repository import MatchingRepository, MatchingRepositoryError
 from app.modules.matching.scorer import SCORING_VERSION, score_candidate
 from app.modules.matching.schemas import (
+    FrontendScoreBreakdown,
     FitScoreResult,
     FitScoresData,
     FitScoresResponse,
@@ -120,7 +121,58 @@ class MatchingService:
             )
             for result in results
         ]
+        single = stable_results[0] if len(stable_results) == 1 else None
+        compatibility_breakdown = (
+            [
+                FrontendScoreBreakdown(
+                    label="skills",
+                    score=single.breakdown.skills,
+                    notes="Deterministic skill overlap contribution.",
+                ),
+                FrontendScoreBreakdown(
+                    label="role alignment",
+                    score=single.breakdown.role_alignment,
+                    notes="Deterministic target-role alignment contribution.",
+                ),
+                FrontendScoreBreakdown(
+                    label="readiness",
+                    score=single.breakdown.readiness,
+                    notes="Deterministic readiness contribution.",
+                ),
+            ]
+            if single
+            else []
+        )
         return FitScoresResponse(
-            data=FitScoresData(results=stable_results),
+            data=FitScoresData(
+                results=stable_results,
+                score_total=single.score if single else None,
+                job_id=single.job_id if single else None,
+                score_breakdown=compatibility_breakdown,
+                matched_skills=single.matched_skills if single else [],
+                missing_skills=single.missing_skills if single else [],
+                explanation=(
+                    "Deterministic score based on validated CV analysis and normalized job requirements."
+                    if single
+                    else None
+                ),
+            ),
             meta={"persisted": True, "count": len(stable_results)},
         )
+
+    def calculate_for_cv(self, cv_id: UUID, job_id: str) -> FitScoresResponse:
+        try:
+            analysis = self._repository.get_latest_analysis_for_cv(str(cv_id))
+        except MatchingRepositoryError as exc:
+            raise MatchingError(
+                "analysis_lookup_failed",
+                "The latest CV analysis could not be loaded.",
+                503,
+            ) from exc
+        if analysis is None:
+            raise MatchingError(
+                "analysis_not_found",
+                "Analyze this CV before requesting a fit score.",
+                404,
+            )
+        return self.calculate(UUID(str(analysis["id"])), [job_id])
