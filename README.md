@@ -113,7 +113,7 @@ cd web/backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -e ".[dev]"
-python -m uvicorn app.main:app --reload
+python -m uvicorn app.main:app --reload --env-file .env
 ```
 
 For macOS, Linux, or Git Bash, activate the environment with:
@@ -127,6 +127,27 @@ The backend runs at `http://localhost:8000`. Its versioned health endpoint is:
 ```text
 GET http://localhost:8000/api/v1/health
 ```
+
+The backend `.env` is loaded explicitly by Uvicorn. To use Gemini for CV
+analysis and recommendations, configure:
+
+```text
+AI_PROVIDER=gemini
+GEMINI_API_KEY=<your key>
+GEMINI_MODEL=<enabled model name>
+AI_TIMEOUT_SECONDS=20
+```
+
+Leave `AI_PROVIDER` unset to keep the deterministic evidence-only fallback.
+The active flow remains:
+
+1. Upload PDF or DOCX.
+2. Extract and persist CV text.
+3. Analyze with Gemini or deterministic fallback.
+4. Display the validated structured profile.
+5. Load Supabase jobs or seeded fallback jobs.
+6. Calculate deterministic fit scores.
+7. Generate grounded recommendations.
 
 Run the backend health test from `web/backend`:
 

@@ -24,6 +24,10 @@ Use approved search APIs or legally accessible metadata only as a secondary disc
 
 Use a seeded in-repo dataset as a deterministic fallback for demos and offline development.
 
+The current backend checks Supabase `job_postings` first, then uses the in-repo
+seed dataset. Live scraper adapters are disabled by default with
+`ENABLE_LIVE_JOB_SCRAPING=false`; source-specific legacy scrapers remain deferred.
+
 ## Seed Data Requirements
 
 - Vietnam internships and fresher roles

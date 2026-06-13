@@ -204,6 +204,42 @@ Recommended implementation order:
 
 Do not start with cover letter, Critic Agent, LaTeX, or PDF export unless the MVP flow is stable.
 
+## Implementation Status
+
+- The backend modular shell has been established under `web/backend`.
+- The `/api/v1/health` route is now wrapped through `app/modules/health/router.py`.
+- The health response shape remains unchanged for compatibility.
+- Supabase configuration and lazy client wrappers now live under `web/backend/app/core/config.py` and `web/backend/app/db/supabase_client.py`.
+- Required Supabase environment variables are validated without printing secret values.
+- Repository skeletons now exist for CV, jobs, recommendations, and audit domains under `web/backend/app/modules/*/repository.py`.
+- Repository modules import safely without requiring live Supabase env or network access.
+- Repository constructors accept optional client providers and remain stub-only until service wiring begins.
+- `POST /api/v1/cvs` validates and extracts text from PDF and DOCX uploads without AI.
+- Extracted CV records are persisted to Supabase `cv_documents` through the CV repository and return a stable `cv_id`.
+- `POST /api/v1/cv-analyses` loads persisted CV text, validates AI JSON as `candidate_profile_v1`, allows one bounded repair attempt, and persists valid profiles to `cv_analyses`.
+- CV analysis and recommendations use provider-neutral adapter protocols.
+- `AI_PROVIDER=gemini` selects the concrete timeout-bounded Gemini REST adapter;
+  `GEMINI_API_KEY` and `GEMINI_MODEL` are then required.
+- With `AI_PROVIDER` unset, the existing deterministic evidence-only fallbacks
+  remain active.
+- Provider errors are sanitized, structured output receives at most one repair
+  attempt, and no live model is called in tests.
+- `GET /api/v1/jobs` and `GET /api/v1/jobs/{job_id}` use Supabase records first and the deterministic Vietnam seed dataset when no records are available.
+- Live job scraping is behind an adapter boundary and disabled by default. No source-specific scraper has been ported.
+- `POST /api/v1/fit-scores` computes versioned deterministic scores from validated analyses and normalized jobs, then persists `job_matches`.
+- Grounded deterministic recommendations are implemented and persisted through
+  `POST /api/v1/recommendations`.
+- CV retrieval and deletion are implemented through the CV service/repository.
+- Supabase-backed repositories use a process-local demo fallback only when
+  Supabase configuration is unavailable.
+- The active root frontend is wired end to end for upload, analysis, jobs,
+  deterministic scoring, and recommendations.
+- Chat, analytics, cover-letter, and PDF/export routes remain compatibility
+  implementations for the dormant `src/app` tree; they are not active root
+  frontend endpoints.
+- P1 profile/saved-job/application/dashboard APIs remain inactive and pending.
+- CV uploads are limited to 5 MiB. Supabase Storage and auth ownership are not implemented yet.
+
 ---
 
 ## Next Recommended Action
@@ -216,6 +252,12 @@ If the repo is still only the starter template:
 4. Update `WORKLOG.md` and `JOURNAL.md`.
 5. Commit documentation first.
 6. Only then create the Next.js/FastAPI skeleton.
+
+When implementing any pending or stubbed endpoint, first inspect its equivalent
+under `web copy/backend`, update the legacy migration audit, and port useful
+behavior through the new module boundaries. Canonical supporting routes use
+`GET/PUT /api/v1/profiles/me` and `/api/v1/applications`; legacy route names and
+direct route-to-Supabase/provider code are not carried forward.
 
 ---
 

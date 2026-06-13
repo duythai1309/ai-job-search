@@ -1,0 +1,1 @@
+"""CV analysis domain module."""

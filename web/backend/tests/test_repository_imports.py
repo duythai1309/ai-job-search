@@ -10,6 +10,7 @@ def test_repository_modules_import_without_supabase_env(monkeypatch):
 
     modules = [
         "app.modules.cv.repository",
+        "app.modules.cv_analysis.repository",
         "app.modules.jobs.repository",
         "app.modules.recommendations.repository",
         "app.modules.audit.repository",
@@ -23,13 +24,17 @@ def test_repository_modules_import_without_supabase_env(monkeypatch):
 def test_repository_classes_expose_expected_methods():
     from app.modules.audit.repository import AuditRepository
     from app.modules.cv.repository import CvRepository
+    from app.modules.cv_analysis.repository import CvAnalysisRepository
     from app.modules.jobs.repository import JobsRepository
     from app.modules.recommendations.repository import RecommendationsRepository
 
     assert hasattr(CvRepository, "list_for_user")
     assert hasattr(CvRepository, "get_by_id")
-    assert hasattr(CvRepository, "create")
+    assert hasattr(CvRepository, "create_document")
     assert hasattr(CvRepository, "delete")
+
+    assert hasattr(CvAnalysisRepository, "get_cv_document")
+    assert hasattr(CvAnalysisRepository, "create_analysis")
 
     assert hasattr(JobsRepository, "list_jobs")
     assert hasattr(JobsRepository, "get_by_id")
