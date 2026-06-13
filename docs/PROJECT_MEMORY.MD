@@ -41,6 +41,21 @@ The MVP is not primarily a LaTeX CV generator. Cover letter generation, Critic A
 
 ---
 
+## Active Frontend
+
+The teammate frontend is the visual source of truth.
+
+- Active and only compiled root: `web/frontend/src/app`
+- Preserve teammate UI/UX when changing API wiring or architecture.
+- Do not replace teammate pages with generic MVP placeholders.
+- The duplicate `web/frontend/app` root and inactive `_legacy_app` copy are removed.
+- Inactive AI-generated root-level `components` and `lib` placeholder modules are removed.
+- Applications and profile use local browser storage until matching backend resources are added.
+- CV upload, analysis, job discovery, fit scoring, and recommendations use the versioned MVP API contract.
+- Plus Jakarta Sans and DM Sans are bundled locally to preserve teammate typography during offline builds.
+
+---
+
 ## Current Architecture Decision
 
 Use a modular monolith for the MVP, not true microservices.

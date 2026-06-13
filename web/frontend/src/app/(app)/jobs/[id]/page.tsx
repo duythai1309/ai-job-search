@@ -1,268 +1,247 @@
 "use client";
-
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
-import { ArrowLeft, Sparkles, CheckCircle2, AlertCircle, Lightbulb, ExternalLink, MapPin } from "lucide-react";
-
 import { api } from "@/lib/api";
-import { JobPosting } from "@/lib/types";
+import { JobPosting, FitEvaluation, SOURCE_LABELS, formatSalary } from "@/lib/types";
+import toast from "react-hot-toast";
+import { ArrowLeft, MapPin, Sparkles, CheckCircle2, AlertCircle, Lightbulb, ExternalLink } from "lucide-react";
 
-const SOURCE_LABELS: Record<string, string> = {
-  vietnamworks: "VietnamWorks",
-  topcv: "TopCV",
-  itviec: "ITviec",
-  careerviet: "CareerViet",
-  jobsgo: "JobsGo",
-  other: "Khác",
-};
-
-function formatSalary(min?: number, max?: number, currency = "VND", negotiable = false): string {
-  if (negotiable) return "Thoả thuận";
-  if (!min && !max) return "—";
-  const fmt = (n: number) => (currency === "VND" ? `${(n / 1_000_000).toFixed(0)}tr` : `$${(n / 1000).toFixed(0)}k`);
-  if (min && max) return `${fmt(min)} - ${fmt(max)}`;
-  if (min) return `Từ ${fmt(min)}`;
-  return `Đến ${fmt(max!)}`;
-}
-
-type FitResult = {
-  cv_id: string;
-  job_id: string;
+interface FitResult {
   score_total: number;
   score_breakdown?: Array<{ label: string; score: number; notes?: string }>;
   matched_skills?: string[];
   missing_skills?: string[];
-  evidence?: string[];
   explanation?: string;
-  calculated_at?: string;
-};
+}
+
+function toFitEvaluation(result: FitResult): FitEvaluation {
+  const breakdown = result.score_breakdown || [];
+  const findScore = (label: string) =>
+    breakdown.find((item) => item.label.toLowerCase().includes(label))?.score ?? result.score_total;
+  const findNotes = (label: string) =>
+    breakdown.find((item) => item.label.toLowerCase().includes(label))?.notes || "";
+
+  return {
+    technical_skills: { score: findScore("skill"), notes: findNotes("skill") },
+    experience_match: { score: findScore("experience"), notes: findNotes("experience") },
+    cultural_fit: { score: findScore("culture"), notes: findNotes("culture") },
+    career_alignment: { score: findScore("role"), notes: findNotes("role") },
+    overall_score: result.score_total,
+    verdict: result.score_total >= 75 ? "Phù hợp cao" : result.score_total >= 50 ? "Có tiềm năng" : "Cần cải thiện",
+    strengths: result.matched_skills || [],
+    gaps: result.missing_skills || [],
+    recommendation: result.explanation || "Xem các điểm mạnh và khoảng cách kỹ năng để chuẩn bị hồ sơ phù hợp hơn.",
+  };
+}
 
 function ScoreBar({ score, label }: { score: number; label: string }) {
-  const color = score >= 75 ? "bg-emerald-500" : score >= 50 ? "bg-amber-500" : "bg-red-400";
+  const color = score >= 75 ? "bg-emerald-500" : score >= 50 ? "bg-accent-500" : "bg-red-400";
+  const textColor = score >= 75 ? "text-emerald-700" : score >= 50 ? "text-accent-700" : "text-red-600";
   return (
-    <div>
-      <div className="mb-1 flex items-center justify-between text-sm">
-        <span className="font-medium text-[#365347]">{label}</span>
-        <span className="font-bold text-[#173c31]">{score}/100</span>
+    <div className="mb-4">
+      <div className="flex justify-between text-sm mb-1.5">
+        <span className="text-slate-700 font-medium font-body">{label}</span>
+        <span className={`font-bold ${textColor}`}>{score}/100</span>
       </div>
-      <div className="h-2 rounded-full bg-[#f2f0e9]">
-        <div className={`h-2 rounded-full ${color}`} style={{ width: `${score}%` }} />
+      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+        <div className={`h-full rounded-full transition-all duration-700 ${color}`} style={{ width: `${score}%` }} />
       </div>
     </div>
   );
 }
 
-function getStoredCvId(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem("vica:lastCvId");
-}
-
 export default function JobDetailPage() {
-  const params = useParams<{ id: string }>();
-  const jobId = params.id;
+  const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const [job, setJob] = useState<JobPosting | null>(null);
+  const [evaluation, setEvaluation] = useState<FitEvaluation | null>(null);
+  const [loadingJob, setLoadingJob] = useState(true);
+  const [loadingEval, setLoadingEval] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [cvId, setCvId] = useState<string | null>(null);
 
-  const [job, setJob] = useState<JobPosting | null>(null);
-  const [fit, setFit] = useState<FitResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [scoring, setScoring] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
-    setCvId(new URLSearchParams(window.location.search).get("cv_id") ?? getStoredCvId());
+    setCvId(window.localStorage.getItem("vica:lastCvId"));
+    api.getJob<JobPosting>(id)
+      .then(setJob)
+      .catch(() => toast.error("Không tải được thông tin việc làm"))
+      .finally(() => setLoadingJob(false));
+  }, [id]);
 
-    let alive = true;
-    setLoading(true);
-    api
-      .getJob<JobPosting>(jobId)
-      .then((result) => {
-        if (alive) setJob(result);
-      })
-      .catch(() => {
-        if (alive) setError("Không tải được thông tin việc làm.");
-      })
-      .finally(() => {
-        if (alive) setLoading(false);
-      });
-
-    return () => {
-      alive = false;
-    };
-  }, [jobId]);
-
-  const score = useMemo(() => fit?.score_total ?? null, [fit]);
-
-  async function computeFit() {
-    if (!cvId) return;
-    setScoring(true);
-    setError(null);
+  async function evaluate() {
+    if (!cvId) {
+      toast.error("Vui lòng upload CV trước khi đánh giá");
+      router.push("/onboarding");
+      return;
+    }
+    setLoadingEval(true);
     try {
-      const result = await api.fitScore<FitResult>(cvId, jobId);
-      setFit(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Không thể tính fit score.");
+      const result = await api.fitScore<FitResult>(cvId, id);
+      setEvaluation(toFitEvaluation(result));
+    } catch (e: any) {
+      toast.error(e.message || "Có lỗi khi đánh giá");
     } finally {
-      setScoring(false);
+      setLoadingEval(false);
     }
   }
 
-  if (loading) {
-    return <div className="mx-auto max-w-5xl px-4 py-10 sm:px-7 lg:px-10"><div className="h-80 animate-pulse rounded-[1.5rem] bg-white/70" /></div>;
+  async function apply() {
+    if (!job) return;
+    setSaving(true);
+    try {
+      await api.tracker.add({ job_posting_id: job.id, company_name: job.company, role_title: job.title, source_url: job.url, status: "applied", fit_score: evaluation?.overall_score, fit_evaluation: evaluation });
+      toast.success("Đã thêm vào danh sách ứng tuyển");
+      router.push("/applications");
+    } catch {
+      toast.error("Không thể lưu đơn ứng tuyển");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  if (!job) {
-    return <div className="mx-auto max-w-5xl px-4 py-10 text-center text-[#365347]/60">Không tìm thấy việc làm.</div>;
-  }
+  const verdictStyle = evaluation
+    ? evaluation.overall_score >= 75
+      ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+      : evaluation.overall_score >= 50
+      ? "bg-accent-100 text-accent-700 border-accent-200"
+      : "bg-red-100 text-red-700 border-red-200"
+    : "";
+
+  if (loadingJob) return <div className="p-8 animate-pulse"><div className="h-64 bg-slate-100 rounded-2xl" /></div>;
+  if (!job) return <div className="p-8 text-center text-slate-400">Không tìm thấy việc làm</div>;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-7 lg:px-10 lg:py-10">
-      <Link href="/jobs" className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-[#24543f]">
-        <ArrowLeft className="h-4 w-4" />
-        Quay lại tìm việc
+    <div className="p-8 max-w-4xl">
+      <Link href="/jobs" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-6 transition-colors font-body">
+        <ArrowLeft className="w-4 h-4" /> Quay lại tìm kiếm
       </Link>
 
-      <section className="rounded-[1.5rem] border border-[#1c2923]/10 bg-white/80 p-6 shadow-[0_18px_60px_rgba(30,55,43,0.05)]">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-extrabold tracking-[-0.04em] text-[#173c31]">{job.title}</h1>
-              <span className="rounded-full bg-[#f2f0e9] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#365347]/60">
-                {SOURCE_LABELS[job.source] || job.source}
-              </span>
-            </div>
-            <p className="mt-1 text-sm font-semibold text-[#365347]">{job.company}</p>
-            <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-[#365347]/68">
-              <MapPin className="h-4 w-4" />
-              {job.location || "Việt Nam"}
-              <span>·</span>
-              {formatSalary(job.salary_min, job.salary_max, job.salary_currency, job.salary_negotiable)}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <a
-              href={job.url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl border border-[#1c2923]/12 bg-white px-4 py-2.5 text-sm font-semibold text-[#24543f]"
-            >
-              <ExternalLink className="h-4 w-4" />
-              Nguồn gốc
-            </a>
-            <Link
-              href={cvId ? `/cv-recommendations?cv_id=${cvId}&job_id=${job.id}` : "/cv-upload"}
-              className="rounded-xl bg-[#173c31] px-4 py-2.5 text-sm font-bold text-white"
-            >
-              Xem gợi ý
-            </Link>
-          </div>
-        </div>
-
-        <div className="mt-6 flex flex-wrap gap-2">
-          {job.skills_required?.slice(0, 8).map((skill) => (
-            <span key={skill} className="rounded-lg bg-[#dcebdd] px-2.5 py-1.5 text-xs font-semibold text-[#24543f]">
-              {skill}
-            </span>
-          ))}
-        </div>
-
-        <div className="mt-6 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => void computeFit()}
-            disabled={!cvId || scoring}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#ef6a45] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
-          >
-            <Sparkles className="h-4 w-4" />
-            {scoring ? "Đang tính..." : cvId ? "Đánh giá fit score" : "Upload CV trước"}
-          </button>
-          {!cvId && (
-            <Link href="/cv-upload" className="rounded-xl border border-[#1c2923]/12 bg-white px-4 py-2.5 text-sm font-semibold text-[#24543f]">
-              Tải CV lên
-            </Link>
+      <div className="bg-white rounded-2xl p-6 shadow-card border border-slate-100 mb-5">
+        <div className="flex items-start gap-4">
+          {job.company_logo_url && (
+            <img src={job.company_logo_url} alt={job.company} className="w-14 h-14 rounded-xl object-contain border border-slate-100 shrink-0" />
           )}
-        </div>
-      </section>
-
-      {error && <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-
-      {fit && (
-        <section className="mt-6 grid gap-4 rounded-[1.5rem] border border-[#1c2923]/10 bg-white/80 p-6 lg:grid-cols-[0.8fr_1.2fr]">
-          <div className="rounded-[1.25rem] bg-[#173c31] p-6 text-white">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#f6b49e]">Fit score</p>
-            <div className="mt-4 text-5xl font-extrabold tracking-[-0.06em]">{score ?? 0}</div>
-            <p className="mt-2 text-sm text-white/70">Tính từ CV đã lưu và mô tả công việc hiện tại.</p>
-          </div>
-
-          <div className="space-y-4">
-            {fit.score_breakdown?.length ? (
-              fit.score_breakdown.map((item) => (
-                <ScoreBar key={item.label} score={item.score} label={item.label} />
-              ))
-            ) : (
-              <div className="text-sm text-[#365347]/60">Backend chưa trả về breakdown chi tiết.</div>
-            )}
-
-            {fit.matched_skills?.length ? (
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#24543f]">Khớp kỹ năng</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {fit.matched_skills.map((skill) => (
-                    <span key={skill} className="rounded-lg bg-[#dcebdd] px-2.5 py-1.5 text-xs font-semibold text-[#24543f]">
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {fit.missing_skills?.length ? (
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#9d4229]">Cần bổ sung</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {fit.missing_skills.map((skill) => (
-                    <span key={skill} className="rounded-lg bg-[#f8e5df] px-2.5 py-1.5 text-xs font-semibold text-[#9d4229]">
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {fit.explanation && (
-              <div className="rounded-2xl bg-[#faf8f2] p-4 text-sm leading-6 text-[#365347]">
-                <Lightbulb className="mb-2 h-4 w-4 text-[#d95332]" />
-                {fit.explanation}
-              </div>
-            )}
-
-            <div className="flex items-center gap-2 text-xs text-[#365347]/55">
-              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-              {fit.calculated_at ? `Tính lúc ${new Date(fit.calculated_at).toLocaleString("vi-VN")}` : "Kết quả đã được trả về từ backend"}
+          <div className="flex-1">
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">{job.title}</h1>
+            <p className="text-slate-600 mt-0.5 font-body">{job.company}</p>
+            <div className="flex flex-wrap gap-3 mt-2.5 text-xs text-slate-500 font-body">
+              {job.location && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{job.location}</span>}
+              <span>{formatSalary(job.salary_min, job.salary_max, job.salary_currency, job.salary_negotiable)}</span>
+              {job.employment_type && <span>{job.employment_type}</span>}
+              <span className="px-2 py-0.5 bg-slate-100 rounded-md">{SOURCE_LABELS[job.source] || job.source}</span>
+              {job.is_remote && <span className="px-2 py-0.5 bg-teal-100 text-teal-700 rounded-md">Remote</span>}
             </div>
           </div>
-        </section>
+        </div>
+
+        <div className="flex gap-2.5 mt-5">
+          <button onClick={evaluate} disabled={loadingEval} className="inline-flex items-center gap-2 bg-primary-800 hover:bg-primary-900 disabled:opacity-60 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-150 cursor-pointer">
+            <Sparkles className="w-4 h-4" /> {loadingEval ? "Đang phân tích..." : "Đánh giá độ phù hợp"}
+          </button>
+          <button onClick={apply} disabled={saving} className="border border-slate-200 text-slate-700 hover:bg-slate-50 px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-150 cursor-pointer">
+            {saving ? "Đang lưu..." : "Lưu vào tracker"}
+          </button>
+          <a href={job.url} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-150">
+            <ExternalLink className="w-4 h-4" /> Xem bản gốc
+          </a>
+        </div>
+      </div>
+
+      {evaluation && (
+        <div className="bg-white rounded-2xl p-6 shadow-card border border-slate-100 mb-5">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="font-bold text-slate-900 text-base">Kết quả đánh giá AI</h2>
+            <div className={`px-4 py-1.5 rounded-xl border font-bold text-sm ${verdictStyle}`}>
+              {evaluation.overall_score}/100 · {evaluation.verdict}
+            </div>
+          </div>
+
+          <div className="mb-5">
+            <ScoreBar score={evaluation.technical_skills.score} label="Kỹ năng kỹ thuật" />
+            <ScoreBar score={evaluation.experience_match.score} label="Kinh nghiệm" />
+            <ScoreBar score={evaluation.cultural_fit.score} label="Văn hóa & hành vi" />
+            <ScoreBar score={evaluation.career_alignment.score} label="Định hướng nghề nghiệp" />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
+              <h3 className="font-bold text-emerald-800 text-xs mb-2.5 uppercase tracking-wide flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Điểm mạnh</h3>
+              <ul className="space-y-1.5">
+                {evaluation.strengths.map((s, i) => <li key={i} className="text-emerald-700 text-sm font-body flex gap-1.5"><span className="shrink-0">·</span>{s}</li>)}
+              </ul>
+            </div>
+            <div className="bg-red-50 rounded-xl p-4 border border-red-100">
+              <h3 className="font-bold text-red-800 text-xs mb-2.5 uppercase tracking-wide flex items-center gap-1.5"><AlertCircle className="w-4 h-4" /> Khoảng cách</h3>
+              <ul className="space-y-1.5">
+                {evaluation.gaps.map((g, i) => <li key={i} className="text-red-700 text-sm font-body flex gap-1.5"><span className="shrink-0">·</span>{g}</li>)}
+              </ul>
+            </div>
+          </div>
+
+          <div className="bg-primary-50 rounded-xl p-4 border border-primary-100">
+            <h3 className="font-bold text-primary-800 text-xs mb-1.5 uppercase tracking-wide flex items-center gap-1.5"><Lightbulb className="w-4 h-4" /> Khuyến nghị</h3>
+            <p className="text-primary-800 text-sm font-body">{evaluation.recommendation}</p>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-slate-100 flex gap-4">
+            <Link href="/cv" className="text-sm text-primary-700 hover:text-primary-900 font-semibold font-body transition-colors">Tạo CV cho vị trí này →</Link>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("vica:open-chat"))}
+              className="text-sm text-primary-700 hover:text-primary-900 font-semibold font-body transition-colors cursor-pointer"
+            >
+              Hỏi AI về chiến lược ứng tuyển →
+            </button>
+          </div>
+        </div>
       )}
 
-      <section className="mt-6 rounded-[1.5rem] border border-[#1c2923]/10 bg-white/80 p-6">
-        <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-[#24543f]">Mô tả công việc</h2>
-        <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[#365347]">{job.description || "Backend chưa có mô tả chi tiết."}</p>
-
-        {job.requirements?.length ? (
-          <div className="mt-6">
-            <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-[#9d4229]">Yêu cầu</h3>
-            <ul className="mt-3 space-y-2 text-sm leading-6 text-[#365347]">
-              {job.requirements.map((item, index) => (
-                <li key={index} className="flex gap-2">
-                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#d95332]" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-      </section>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="md:col-span-2 space-y-4">
+          {job.description && (
+            <div className="bg-white rounded-2xl p-6 shadow-card border border-slate-100">
+              <h2 className="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wide">Mô tả công việc</h2>
+              <div className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed font-body">{job.description}</div>
+            </div>
+          )}
+          {job.requirements.length > 0 && (
+            <div className="bg-white rounded-2xl p-6 shadow-card border border-slate-100">
+              <h2 className="font-bold text-slate-900 mb-4 text-sm uppercase tracking-wide">Yêu cầu</h2>
+              <ul className="space-y-2">
+                {job.requirements.map((r, i) => (
+                  <li key={i} className="text-sm text-slate-700 flex gap-2 font-body">
+                    <span className="text-primary-500 shrink-0 font-bold">·</span>{r}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+        <div className="space-y-4">
+          {job.skills_required.length > 0 && (
+            <div className="bg-white rounded-2xl p-5 shadow-card border border-slate-100">
+              <h2 className="font-bold text-slate-900 mb-3 text-xs uppercase tracking-wide">Kỹ năng cần có</h2>
+              <div className="flex flex-wrap gap-2">
+                {job.skills_required.map((s) => (
+                  <span key={s} className="text-xs bg-primary-50 text-primary-700 px-2.5 py-1 rounded-lg font-medium font-body">{s}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {job.benefits.length > 0 && (
+            <div className="bg-white rounded-2xl p-5 shadow-card border border-slate-100">
+              <h2 className="font-bold text-slate-900 mb-3 text-xs uppercase tracking-wide">Phúc lợi</h2>
+              <ul className="space-y-2">
+                {job.benefits.map((b, i) => (
+                  <li key={i} className="text-xs text-slate-600 flex gap-1.5 font-body">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />{b}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

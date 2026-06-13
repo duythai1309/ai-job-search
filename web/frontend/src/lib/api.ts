@@ -17,6 +17,10 @@ type ApiEnvelope<T> = {
   error?: ApiErrorShape;
 };
 
+const CV_IDS_KEY = "vica:cvIds";
+const APPLICATIONS_KEY = "vica:applications";
+const PROFILE_KEY = "vica:profile";
+
 export interface CVSection {
   id: string;
   title: string;
@@ -115,6 +119,30 @@ async function requestJson<T>(
   return parseResponse<T>(response);
 }
 
+function readLocalJson<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const value = window.localStorage.getItem(key);
+    return value ? (JSON.parse(value) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeLocalJson<T>(key: string, value: T): void {
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  }
+}
+
+function rememberCvId(cvId: string): void {
+  const ids = readLocalJson<string[]>(CV_IDS_KEY, []);
+  writeLocalJson(CV_IDS_KEY, [cvId, ...ids.filter((id) => id !== cvId)]);
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem("vica:lastCvId", cvId);
+  }
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>
@@ -136,18 +164,45 @@ export const api = {
 
   health: async () => requestJson<{ status: string }>("/health"),
 
-  uploadCv: async (file: File) => {
+  uploadCvRecord: async <T = unknown>(file: File) => {
     const formData = new FormData();
     formData.append("file", file);
-    return requestJson<CVAnalysisResult>("/cvs", {
+    const record = await requestJson<T>("/cvs", {
       method: "POST",
       body: formData,
     });
+    const cvId = (record as { id?: string })?.id;
+    if (cvId) rememberCvId(cvId);
+    return record;
+  },
+
+  uploadCv: async (file: File): Promise<CVAnalysisResult> => {
+    const record = await api.uploadCvRecord<{ id: string; filename?: string; summary?: string }>(file);
+    const analysis = await api.analyzeCv<Partial<CVAnalysisResult>>(record.id);
+    return {
+      name: analysis.name || record.filename || file.name,
+      overall_score: analysis.overall_score ?? 0,
+      summary_message: analysis.summary_message || record.summary || "CV đã được tải lên và phân tích.",
+      top_priorities: analysis.top_priorities || [],
+      sections: analysis.sections || [],
+    };
   },
 
   getCv: async <T = unknown>(cvId: string) => requestJson<T>(`/cvs/${cvId}`),
 
-  deleteCv: async (cvId: string) => requestJson<void>(`/cvs/${cvId}`, { method: "DELETE" }),
+  deleteCv: async (cvId: string) => {
+    await requestJson<void>(`/cvs/${cvId}`, { method: "DELETE" });
+    const ids = readLocalJson<string[]>(CV_IDS_KEY, []).filter((id) => id !== cvId);
+    writeLocalJson(CV_IDS_KEY, ids);
+  },
+
+  listCvs: async <T = unknown>() => {
+    const ids = readLocalJson<string[]>(CV_IDS_KEY, []);
+    const records = await Promise.all(
+      ids.map((id) => requestJson<T>(`/cvs/${id}`).catch(() => null))
+    );
+    return records.filter((record) => record !== null) as T[];
+  },
 
   analyzeCv: async <T = unknown>(cvId: string) =>
     requestJson<T>("/cv-analyses", {
@@ -185,6 +240,44 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ cv_id: cvId, job_id: jobId }),
     }),
+
+  tracker: {
+    list: async <T = unknown>() => readLocalJson<T[]>(APPLICATIONS_KEY, []),
+    add: async <T extends object>(application: T & { id?: string }) => {
+      const stored = readLocalJson<T[]>(APPLICATIONS_KEY, []);
+      const next = {
+        ...application,
+        id: application.id || crypto.randomUUID(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      writeLocalJson(APPLICATIONS_KEY, [next, ...stored]);
+      return next;
+    },
+    update: async <T extends { id: string }>(id: string, patch: Partial<T>) => {
+      const stored = readLocalJson<T[]>(APPLICATIONS_KEY, []);
+      const next = stored.map((item) =>
+        item.id === id ? { ...item, ...patch, updated_at: new Date().toISOString() } : item
+      );
+      writeLocalJson(APPLICATIONS_KEY, next);
+    },
+    delete: async <T extends { id: string }>(id: string) => {
+      const stored = readLocalJson<T[]>(APPLICATIONS_KEY, []);
+      writeLocalJson(APPLICATIONS_KEY, stored.filter((item) => item.id !== id));
+    },
+  },
+
+  profile: {
+    get: async <T = unknown>() => readLocalJson<Partial<T>>(PROFILE_KEY, {}),
+    save: async <T = unknown>(profile: Partial<T>) => {
+      writeLocalJson(PROFILE_KEY, profile);
+      return profile;
+    },
+  },
+
+  downloadPdf: async (_cvId: string): Promise<void> => {
+    throw new Error("Backend MVP hiện chưa hỗ trợ xuất PDF.");
+  },
 
   streamChat: async (
     _body?: {
