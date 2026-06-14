@@ -61,3 +61,19 @@ Safety:
 - Teammate layout, colors, spacing, typography, cards, icons, animations, and page hierarchy were preserved.
 - Backend application code and course logging hooks were not changed.
 - No environment files or secrets were added.
+
+## Backend Branch Integration
+
+Completed:
+
+- Integrated the modular backend prerequisites followed by the safe job ingestion and teammate API compatibility commits.
+- Preserved the active teammate frontend at `web/frontend/src/app`; no frontend source or configuration files changed.
+- Added deterministic seed ingestion, disabled-by-default live source adapters, normalization, filtering, deduplication, and repository upsert.
+- Added frontend-compatible job query aliases, CV analysis presentation fields, single-job fit scoring, recommendation priority tags, and nested error details.
+- Preserved canonical backend request and response fields alongside additive compatibility fields.
+
+Safety:
+
+- No `.env`, `.env.local`, secrets, frontend UI files, or course logging hooks were changed.
+- Live Supabase, Gemini, and scraper calls remain outside the test suite.
+- `0006_add_job_ingestion_fields.sql` must be applied before live Supabase ingestion/upsert.

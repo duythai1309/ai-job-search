@@ -293,3 +293,12 @@ Do not:
 - Chat is visibly unavailable and disabled because the current MVP API contract has no chat endpoint.
 - Analytics describes the currently available job records and labels seeded data instead of claiming realtime sector or salary analysis.
 - Important API responses now use lightweight runtime validators and safe error-envelope extraction.
+
+## Backend Integration Milestone
+
+- The modular backend prerequisite commits and the backend commits originally identified as `76180c5` and `715f2a5` are integrated into the hardened `frontend` branch.
+- Safe job ingestion uses source adapters, deterministic normalization/filtering/deduplication, and repository upsert. Live adapters remain disabled by default.
+- Backend contracts now match the teammate client for job query aliases, CV analysis presentation fields, single-job fit scoring, recommendation priority tags, and nested errors.
+- The teammate UI/UX remains the visual source of truth; no active frontend files were changed during backend integration.
+- Migration `0006_add_job_ingestion_fields.sql` must be applied to Supabase before live ingestion/upsert.
+- CV authentication and ownership enforcement are not implemented yet.
