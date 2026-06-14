@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import hashlib
 import re
+from uuid import NAMESPACE_URL, uuid5
 
 from app.modules.jobs.sources.base import SourceJob
 
@@ -11,6 +11,14 @@ TECH_TERMS = (
     "mlops", "devops", "cloud", "cybersecurity", "business intelligence",
 )
 EXCLUDED_TERMS = ("sales", "accounting", "human resources", "marketing")
+CLOUD_JOB_SOURCES = {
+    "vietnamworks",
+    "topcv",
+    "itviec",
+    "careerviet",
+    "jobsgo",
+    "other",
+}
 
 
 def is_relevant_tech_job(job: SourceJob) -> bool:
@@ -26,10 +34,14 @@ def is_relevant_tech_job(job: SourceJob) -> bool:
 def normalize_job(job: SourceJob) -> dict:
     source_job_id = job.source_job_id
     fingerprint = "|".join((job.source, source_job_id or "", job.company, job.title, job.apply_url or ""))
-    job_id = f"ingest-{hashlib.sha256(fingerprint.encode()).hexdigest()[:20]}"
+    job_id = str(uuid5(NAMESPACE_URL, f"vica-job:{fingerprint}"))
+    cloud_source = job.source if job.source in CLOUD_JOB_SOURCES else "other"
+    raw_payload = dict(job.raw_payload or {})
+    if cloud_source != job.source:
+        raw_payload.setdefault("original_source", job.source)
     return {
         "id": job_id,
-        "source": job.source,
+        "source": cloud_source,
         "source_tier": 3 if job.is_seeded else 1,
         "is_seeded": job.is_seeded,
         "availability_status": job.availability_status,
@@ -45,7 +57,7 @@ def normalize_job(job: SourceJob) -> dict:
         "posted_at": job.posted_at,
         "salary_range": job.salary_range,
         "source_job_id": source_job_id,
-        "raw_payload": job.raw_payload,
+        "raw_payload": raw_payload,
     }
 
 

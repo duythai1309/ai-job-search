@@ -9,6 +9,7 @@ from app.core.responses import APIErrorResponse
 from app.modules.jobs.ingestion_service import (
     JobIngestionService,
     IngestionEndpointDisabledError,
+    IngestionSchemaNotReadyError,
     LiveIngestionDisabledError,
 )
 from app.modules.jobs.schemas import (
@@ -72,6 +73,16 @@ def ingest_jobs(
             request_id=str(uuid4()),
         )
         return JSONResponse(status_code=409, content=error.model_dump())
+    except IngestionSchemaNotReadyError:
+        error = APIErrorResponse(
+            code="job_ingestion_schema_not_ready",
+            message=(
+                "Supabase schema missing source_job_id/raw_payload; "
+                "apply additive migration first."
+            ),
+            request_id=str(uuid4()),
+        )
+        return JSONResponse(status_code=503, content=error.model_dump())
 
 
 @router.get("/{job_id}", response_model=JobDetailResponse)

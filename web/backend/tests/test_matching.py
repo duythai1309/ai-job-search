@@ -141,6 +141,25 @@ def test_fit_score_accepts_frontend_cv_and_job_shape(matching_dependencies):
     assert response.json()["data"]["score_total"] == response.json()["data"]["results"][0]["score"]
 
 
+def test_fit_score_accepts_uuid_job_id_serialized_as_string():
+    analysis_id = uuid4()
+    job_id = str(uuid4())
+    repository = FakeMatchingRepository(analysis_id)
+    service = MatchingService(
+        repository,
+        type(
+            "UuidJobsService",
+            (),
+            {"get_job": lambda self, value: JobDetailResponse(data=make_job(value, ["Python"]))},
+        )(),
+    )
+
+    response = service.calculate(analysis_id, [job_id])
+
+    assert response.data.results[0].job_id == job_id
+    assert repository.saved[0]["job_id"] == job_id
+
+
 def test_fit_score_frontend_shape_reports_missing_analysis(matching_dependencies):
     _, repository = matching_dependencies
     repository.analysis = None

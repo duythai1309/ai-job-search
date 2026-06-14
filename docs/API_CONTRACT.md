@@ -158,6 +158,8 @@ All user-owned CV endpoints require authentication. Job browse may be public for
 - `POST /api/v1/jobs/ingest` accepts `sources` and optional `limit`.
 - The default safe source is `seed`.
 - Live sources return `409 live_job_ingestion_disabled` unless explicitly enabled.
+- Ingestion returns `503 job_ingestion_schema_not_ready` when the cloud database
+  has not applied `002_cloud_backend_mvp_alignment.sql`.
 - The response reports fetched, accepted, rejected, inserted, updated, and error counts.
 - Ingestion persists through `JobsRepository`; routes and source adapters never access Supabase directly.
 - LinkedIn live scraping is disabled. Only future manual/public URL import or an approved API is allowed.
@@ -168,6 +170,9 @@ All user-owned CV endpoints require authentication. Job browse may be public for
 - It accepts both `limit` and `page_size`; `limit` takes precedence and values are clamped to 50.
 - `role_type` filters employment/role type, while `level` filters normalized job level.
 - Job records expose `skills`, `apply_url`, `is_seeded`, and `availability_status`.
+- Existing Supabase rows remain valid: `skills_required`, `url`, and `raw_data`
+  are mapped to `skills`, `apply_url`, and `raw_payload`.
+- Cloud `job_postings.id` remains UUID; API responses serialize it as a string.
 - `POST /api/v1/cv-analyses` preserves `analysis_id`, `cv_id`, and `profile` and also returns deterministic `overall_score`, `top_priorities`, and `sections`.
 - `POST /api/v1/fit-scores` accepts either `analysis_id` with `job_ids` or `cv_id` with `job_id`.
 - Single-job fit responses preserve `results` and add `score_total`, `job_id`, `score_breakdown`, `matched_skills`, `missing_skills`, and `explanation`.
@@ -175,6 +180,18 @@ All user-owned CV endpoints require authentication. Job browse may be public for
 - Error responses preserve flat `code` and `message` and also include `{ "error": { "code", "message" } }`.
 
 CV routes currently use server-side/demo repository access without authenticated ownership enforcement. This remains an explicit MVP limitation and must be resolved before multi-user production use.
+
+## Supabase Cloud Compatibility
+
+- The existing Supabase cloud database is the database source of truth.
+- `web/backend/migrations` are historical backend module migrations and are not
+  automatically applied by Supabase CLI.
+- Existing `job_postings` columns and data are preserved.
+- Apply `web/supabase/migrations/002_cloud_backend_mvp_alignment.sql` through
+  Supabase SQL Editor before enabling real ingestion, fit-score persistence, or
+  recommendation persistence.
+- The alignment migration is additive: it adds compatibility columns and missing
+  MVP tables without dropping tables, dropping columns, or converting job IDs.
 
 ## Legacy Reference Requirement
 

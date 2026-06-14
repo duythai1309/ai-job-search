@@ -302,3 +302,20 @@ Do not:
 - The teammate UI/UX remains the visual source of truth; no active frontend files were changed during backend integration.
 - Migration `0006_add_job_ingestion_fields.sql` must be applied to Supabase before live ingestion/upsert.
 - CV authentication and ownership enforcement are not implemented yet.
+
+## Supabase Cloud Compatibility Decision
+
+- The running Supabase cloud database and its existing tables are the database
+  source of truth.
+- Backend repositories adapt the existing `job_postings` UUID and legacy columns
+  instead of recreating or destructively converting that table.
+- Legacy cloud fields map as follows: `skills_required` to `skills`, `url` to
+  `apply_url`, and `raw_data` to `raw_payload`.
+- `web/backend/migrations` are retained as backend history and are not the cloud
+  migration source.
+- The additive cloud alignment script is
+  `web/supabase/migrations/002_cloud_backend_mvp_alignment.sql`.
+- The script preserves existing job data, adds missing compatibility columns,
+  and creates only the missing backend MVP tables with UUID-compatible job
+  references.
+- Real ingestion remains disabled until the additive cloud script is applied.

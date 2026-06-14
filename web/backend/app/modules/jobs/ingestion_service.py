@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.core.config import Settings, get_settings
 from app.modules.jobs.normalizer import dedupe_jobs, is_relevant_tech_job, normalize_job
-from app.modules.jobs.repository import JobsRepository
+from app.modules.jobs.repository import JobsRepository, JobsSchemaCompatibilityError
 from app.modules.jobs.schemas import JobIngestionResponse, JobIngestionSummary
 from app.modules.jobs.sources.base import JobSource
 from app.modules.jobs.sources.seed import SeedSourceAdapter
@@ -18,6 +18,10 @@ class LiveIngestionDisabledError(RuntimeError):
 
 
 class IngestionEndpointDisabledError(RuntimeError):
+    pass
+
+
+class IngestionSchemaNotReadyError(RuntimeError):
     pass
 
 
@@ -54,7 +58,10 @@ class JobIngestionService:
                 errors += 1
         accepted_source = [job for job in fetched if is_relevant_tech_job(job)]
         normalized = dedupe_jobs([normalize_job(job) for job in accepted_source])[:maximum]
-        persisted = self._repository.upsert_jobs(normalized)
+        try:
+            persisted = self._repository.upsert_jobs(normalized)
+        except JobsSchemaCompatibilityError as exc:
+            raise IngestionSchemaNotReadyError(str(exc)) from exc
         return JobIngestionResponse(
             data=JobIngestionSummary(
                 fetched_count=len(fetched),

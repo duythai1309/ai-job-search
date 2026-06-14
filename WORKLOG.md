@@ -77,3 +77,33 @@ Safety:
 - No `.env`, `.env.local`, secrets, frontend UI files, or course logging hooks were changed.
 - Live Supabase, Gemini, and scraper calls remain outside the test suite.
 - `0006_add_job_ingestion_fields.sql` must be applied before live Supabase ingestion/upsert.
+
+## Supabase Cloud Schema Alignment
+
+Decision:
+
+- Treat the running Supabase cloud database as the source of truth.
+- Adapt backend repositories to existing UUID job IDs and legacy job columns.
+- Do not recreate `job_postings` or apply backend-local migrations directly to
+  the cloud database.
+
+Completed:
+
+- Added cloud-row normalization for `skills_required`, `url`, and `raw_data`.
+- Preserved UUID job IDs and serialized them as API strings.
+- Changed ingestion IDs to deterministic UUIDs.
+- Added dual-write ingestion payloads for existing and compatibility job columns.
+- Added a clear `job_ingestion_schema_not_ready` response when required additive
+  columns are absent.
+- Added `web/supabase/migrations/002_cloud_backend_mvp_alignment.sql` to add
+  compatibility columns, backfill legacy data, and create missing MVP tables.
+- Added fake-client tests for old/new cloud rows, UUID IDs, dual-write payloads,
+  schema readiness errors, and UUID-like fit-score job IDs.
+
+Safety:
+
+- No tables or columns are dropped.
+- `job_postings.id` remains UUID.
+- Existing `skills_required`, `url`, and `raw_data` columns remain intact.
+- No live Supabase, scraping, or AI calls are made by tests.
+- No frontend UI/UX files or secrets are changed.
