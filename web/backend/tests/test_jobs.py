@@ -130,3 +130,23 @@ def test_supabase_jobs_take_precedence():
 
     assert body["data"]["jobs"][0]["id"] == "live-1"
     assert body["meta"]["fallback_used"] is False
+
+
+def test_cloud_timestamp_is_normalized_to_api_date():
+    live_job = {
+        **SEED_JOBS[0],
+        "id": "live-timestamp",
+        "source": "topcv",
+        "source_tier": 1,
+        "is_seeded": False,
+        "availability_status": "active",
+        "posted_at": "2026-06-10T14:19:07.434034+00:00",
+    }
+    service = JobsService(
+        repository=FakeJobsRepository([live_job]),
+        seed_source=FakeSeedSource(),
+    )
+
+    result = service.list_jobs()
+
+    assert result.data.jobs[0].posted_at.isoformat() == "2026-06-10"

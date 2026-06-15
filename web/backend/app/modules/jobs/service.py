@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date, datetime
+
 from app.modules.jobs.repository import JobsRepository, JobsRepositoryError
 from app.modules.jobs.schemas import (
     JobDetailResponse,
@@ -103,6 +105,11 @@ class JobsService:
     @staticmethod
     def _normalize(job: dict) -> JobRecord:
         is_seeded = bool(job.get("is_seeded", False))
+        posted_at = job.get("posted_at")
+        if isinstance(posted_at, datetime):
+            posted_at = posted_at.date()
+        elif isinstance(posted_at, str) and "T" in posted_at:
+            posted_at = posted_at.split("T", 1)[0]
         return JobRecord(
             id=str(job["id"]),
             source=str(job.get("source", "supabase")),
@@ -120,6 +127,6 @@ class JobsService:
             skills=list(job.get("skills") or job.get("skills_required") or []),
             description=str(job.get("description", "")),
             apply_url=None if is_seeded else job.get("apply_url") or job.get("url"),
-            posted_at=job.get("posted_at"),
+            posted_at=posted_at,
             salary_range=job.get("salary_range"),
         )
