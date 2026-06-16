@@ -1,1 +1,0 @@
-"""VICA backend application package."""
