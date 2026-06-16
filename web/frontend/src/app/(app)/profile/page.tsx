@@ -27,14 +27,13 @@ export default function ProfilePage() {
   const [addingSkill, setAddingSkill] = useState(false);
 
   useEffect(() => {
-    api.profile.get<Profile>().then(setProfile).finally(() => setLoading(false));
+    api.get<Profile>("/profile/").then(setProfile).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   async function saveBasic() {
     setSaving(true);
     try {
-      const nextProfile = {
-        ...profile,
+      await api.patch("/profile/", {
         full_name: profile.full_name,
         location: profile.location,
         phone: profile.phone,
@@ -44,9 +43,8 @@ export default function ProfilePage() {
         current_status: profile.current_status,
         target_roles: profile.target_roles,
         target_locations: profile.target_locations,
-      };
-      await api.profile.save<Profile>(nextProfile);
-      toast.success("Đã lưu hồ sơ trên trình duyệt này");
+      });
+      toast.success("Đã lưu hồ sơ");
     } catch {
       toast.error("Không thể lưu");
     } finally {
@@ -58,19 +56,10 @@ export default function ProfilePage() {
     if (!newSkill.name.trim()) return;
     setAddingSkill(true);
     try {
-      const skill: Skill = {
-        id: crypto.randomUUID(),
-        name: newSkill.name,
-        category: newSkill.category as Skill["category"],
-        level: newSkill.level,
-      };
+      const skill = await api.post<Skill>("/profile/skills", newSkill);
       setProfile((prev) => ({ ...prev, skills: [...(prev.skills || []), skill] }));
-      await api.profile.save<Profile>({
-        ...profile,
-        skills: [...(profile.skills || []), skill],
-      });
       setNewSkill({ name: "", category: "primary", level: "intermediate" });
-      toast.success("Đã thêm kỹ năng vào hồ sơ cục bộ");
+      toast.success("Đã thêm kỹ năng");
     } catch {
       toast.error("Không thêm được kỹ năng");
     } finally {
@@ -79,10 +68,8 @@ export default function ProfilePage() {
   }
 
   async function deleteSkill(skillId: string) {
-    const skills = (profile.skills || []).filter((skill) => skill.id !== skillId);
-    const nextProfile = { ...profile, skills };
-    setProfile(nextProfile);
-    await api.profile.save<Profile>(nextProfile);
+    await api.delete(`/profile/skills/${skillId}`);
+    setProfile((prev) => ({ ...prev, skills: (prev.skills || []).filter((s) => s.id !== skillId) }));
   }
 
   const tabs = [
@@ -119,9 +106,6 @@ export default function ProfilePage() {
 
       {activeTab === "basic" && (
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-5">
-          <p className="text-xs text-gray-400">
-            Dữ liệu này chỉ lưu trên trình duyệt hiện tại.
-          </p>
           {[
             { key: "full_name", label: "Họ và tên", placeholder: "Nguyễn Văn A" },
             { key: "location", label: "Địa điểm", placeholder: "TP. Hồ Chí Minh" },

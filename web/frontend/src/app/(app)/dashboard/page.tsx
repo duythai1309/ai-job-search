@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { STATUS_LABELS } from "@/lib/types";
-import { Application } from "@/lib/types";
 import { createClient } from "@/lib/supabase";
 
 interface Stats {
@@ -49,36 +48,20 @@ export default function DashboardPage() {
         const full = data.user?.user_metadata?.full_name || data.user?.email?.split("@")[0] || "";
         const parts = full.trim().split(" ").filter(Boolean);
         setFirstName(parts[parts.length - 1] || full);
-      });
+      })
+      .catch(() => {});
 
     async function load() {
       try {
-        const [applications, cvs] = await Promise.all([
-          api.tracker.list<Application>(),
-          api.listCvs(),
+        const [activity, appStats] = await Promise.all([
+          api.get<{ jobs_explored: number; cvs_created: number; avg_fit_score: number | null }>(
+            "/analytics/user/activity"
+          ),
+          api.get<{ total: number; by_status: Record<string, number>; active: number; success_rate: number }>(
+            "/applications/stats"
+          ),
         ]);
-        const byStatus = applications.reduce<Record<string, number>>((result, application) => {
-          result[application.status] = (result[application.status] || 0) + 1;
-          return result;
-        }, {});
-        const scored = applications
-          .map((application) => application.fit_score)
-          .filter((score): score is number => score != null);
-        setStats({
-          total: applications.length,
-          by_status: byStatus,
-          active: applications.filter((application) =>
-            ["bookmarked", "applied", "interview"].includes(application.status)
-          ).length,
-          success_rate: applications.length
-            ? Math.round(((byStatus.offer || 0) / applications.length) * 100)
-            : 0,
-          jobs_explored: applications.length,
-          cvs_created: cvs.length,
-          avg_fit_score: scored.length
-            ? Math.round(scored.reduce((sum, score) => sum + score, 0) / scored.length)
-            : null,
-        });
+        setStats({ ...appStats, ...activity });
       } catch {
         /* ignore */
       } finally {
@@ -108,7 +91,7 @@ export default function DashboardPage() {
   const quickActions = [
     { href: "/jobs", Icon: Search, label: "Tìm kiếm việc làm", desc: "Tổng hợp từ 4 cổng tuyển dụng VN" },
     { href: "/cv", Icon: FileText, label: "Tạo hoặc chỉnh CV", desc: "AI phân tích và đề xuất cải thiện" },
-    { href: "/analytics", Icon: TrendingUp, label: "Xu hướng thị trường", desc: "Kỹ năng từ dữ liệu việc làm hiện có" },
+    { href: "/analytics", Icon: TrendingUp, label: "Xu hướng thị trường", desc: "Kỹ năng và mức lương đang hot" },
   ];
 
   return (

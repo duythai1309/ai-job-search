@@ -1,15 +1,19 @@
 import type { Metadata } from "next";
+import { Plus_Jakarta_Sans, DM_Sans } from "next/font/google";
 import { Toaster } from "react-hot-toast";
-import "@fontsource/plus-jakarta-sans/400.css";
-import "@fontsource/plus-jakarta-sans/500.css";
-import "@fontsource/plus-jakarta-sans/600.css";
-import "@fontsource/plus-jakarta-sans/700.css";
-import "@fontsource/plus-jakarta-sans/800.css";
-import "@fontsource/dm-sans/400.css";
-import "@fontsource/dm-sans/500.css";
-import "@fontsource/dm-sans/600.css";
-import "@fontsource/dm-sans/700.css";
 import "./globals.css";
+
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin", "vietnamese"],
+  variable: "--font-jakarta",
+  display: "swap",
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-dm",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Vica – Tìm việc thông minh",
@@ -18,14 +22,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="vi">
+    <html lang="vi" className={`${jakarta.variable} ${dmSans.variable}`}>
       <body className="font-sans antialiased">
         {children}
         <Toaster
           position="top-right"
           toastOptions={{
             style: {
-              fontFamily: '"DM Sans", system-ui, sans-serif',
+              fontFamily: "var(--font-dm), system-ui, sans-serif",
               fontSize: "14px",
               borderRadius: "10px",
             },

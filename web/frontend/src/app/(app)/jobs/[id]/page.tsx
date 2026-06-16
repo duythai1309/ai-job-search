@@ -4,29 +4,8 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { JobPosting, FitEvaluation, SOURCE_LABELS, formatSalary } from "@/lib/types";
-import { canApplyToJob, FitScoreResult } from "@/lib/contracts";
 import toast from "react-hot-toast";
-import { ArrowLeft, MapPin, Sparkles, CheckCircle2, AlertCircle, Lightbulb, ExternalLink } from "lucide-react";
-
-function toFitEvaluation(result: FitScoreResult): FitEvaluation {
-  const breakdown = result.score_breakdown || [];
-  const findScore = (label: string) =>
-    breakdown.find((item) => item.label.toLowerCase().includes(label))?.score ?? result.score_total;
-  const findNotes = (label: string) =>
-    breakdown.find((item) => item.label.toLowerCase().includes(label))?.notes || "";
-
-  return {
-    technical_skills: { score: findScore("skill"), notes: findNotes("skill") },
-    experience_match: { score: findScore("experience"), notes: findNotes("experience") },
-    cultural_fit: { score: findScore("culture"), notes: findNotes("culture") },
-    career_alignment: { score: findScore("role"), notes: findNotes("role") },
-    overall_score: result.score_total,
-    verdict: result.score_total >= 75 ? "Phù hợp cao" : result.score_total >= 50 ? "Có tiềm năng" : "Cần cải thiện",
-    strengths: result.matched_skills || [],
-    gaps: result.missing_skills || [],
-    recommendation: result.explanation || "Xem các điểm mạnh và khoảng cách kỹ năng để chuẩn bị hồ sơ phù hợp hơn.",
-  };
-}
+import { ArrowLeft, MapPin, Sparkles, CheckCircle2, AlertCircle, Lightbulb, ExternalLink, FileText } from "lucide-react";
 
 function ScoreBar({ score, label }: { score: number; label: string }) {
   const color = score >= 75 ? "bg-emerald-500" : score >= 50 ? "bg-accent-500" : "bg-red-400";
@@ -52,26 +31,19 @@ export default function JobDetailPage() {
   const [loadingJob, setLoadingJob] = useState(true);
   const [loadingEval, setLoadingEval] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [cvId, setCvId] = useState<string | null>(null);
 
   useEffect(() => {
-    api.getLastCvId().then(setCvId);
-    api.getJob(id)
+    api.get<JobPosting>(`/jobs/${id}`)
       .then(setJob)
       .catch(() => toast.error("Không tải được thông tin việc làm"))
       .finally(() => setLoadingJob(false));
   }, [id]);
 
   async function evaluate() {
-    if (!cvId) {
-      toast.error("Vui lòng upload CV trước khi đánh giá");
-      router.push("/onboarding");
-      return;
-    }
     setLoadingEval(true);
     try {
-      const result = await api.fitScore(cvId, id);
-      setEvaluation(toFitEvaluation(result));
+      const result = await api.post<FitEvaluation>(`/jobs/${id}/evaluate-fit`);
+      setEvaluation(result);
     } catch (e: any) {
       toast.error(e.message || "Có lỗi khi đánh giá");
     } finally {
@@ -83,8 +55,8 @@ export default function JobDetailPage() {
     if (!job) return;
     setSaving(true);
     try {
-      await api.tracker.add({ job_posting_id: job.id, company_name: job.company, role_title: job.title, source_url: job.url, status: "applied", fit_score: evaluation?.overall_score, fit_evaluation: evaluation });
-      toast.success("Đã lưu vào danh sách cục bộ");
+      await api.post("/applications/", { job_posting_id: job.id, company_name: job.company, role_title: job.title, source_url: job.url, status: "applied", fit_score: evaluation?.overall_score, fit_evaluation: evaluation });
+      toast.success("Đã thêm vào danh sách ứng tuyển");
       router.push("/applications");
     } catch {
       toast.error("Không thể lưu đơn ứng tuyển");
@@ -132,18 +104,15 @@ export default function JobDetailPage() {
           <button onClick={evaluate} disabled={loadingEval} className="inline-flex items-center gap-2 bg-primary-800 hover:bg-primary-900 disabled:opacity-60 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-150 cursor-pointer">
             <Sparkles className="w-4 h-4" /> {loadingEval ? "Đang phân tích..." : "Đánh giá độ phù hợp"}
           </button>
+          <Link href={`/jobs/${job.id}/tailor`} className="inline-flex items-center gap-2 border border-slate-200 text-slate-700 hover:bg-slate-50 px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-150 cursor-pointer">
+            <FileText className="w-4 h-4" /> Sửa CV cho vị trí này
+          </Link>
           <button onClick={apply} disabled={saving} className="border border-slate-200 text-slate-700 hover:bg-slate-50 px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-150 cursor-pointer">
             {saving ? "Đang lưu..." : "Lưu vào tracker"}
           </button>
-          {canApplyToJob(job) ? (
-            <a href={job.url} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-150">
-              <ExternalLink className="w-4 h-4" /> Xem bản gốc
-            </a>
-          ) : (
-            <button disabled title="Liên kết ứng tuyển chưa khả dụng" className="ml-auto inline-flex items-center gap-1.5 border border-slate-200 text-slate-300 px-5 py-2.5 rounded-xl font-medium text-sm cursor-not-allowed">
-              <ExternalLink className="w-4 h-4" /> Chưa có link ứng tuyển
-            </button>
-          )}
+          <a href={job.url} target="_blank" rel="noopener noreferrer" className="ml-auto inline-flex items-center gap-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-150">
+            <ExternalLink className="w-4 h-4" /> Xem bản gốc
+          </a>
         </div>
       </div>
 
@@ -184,7 +153,7 @@ export default function JobDetailPage() {
           </div>
 
           <div className="mt-4 pt-4 border-t border-slate-100 flex gap-4">
-            <Link href="/cv" className="text-sm text-primary-700 hover:text-primary-900 font-semibold font-body transition-colors">Tạo CV cho vị trí này →</Link>
+            <Link href={`/jobs/${job.id}/tailor`} className="text-sm text-primary-700 hover:text-primary-900 font-semibold font-body transition-colors">Tinh chỉnh CV cho vị trí này →</Link>
             <button
               onClick={() => window.dispatchEvent(new CustomEvent("vica:open-chat"))}
               className="text-sm text-primary-700 hover:text-primary-900 font-semibold font-body transition-colors cursor-pointer"

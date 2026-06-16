@@ -1,192 +1,790 @@
+"use client";
+
 import Link from "next/link";
-import { Briefcase, Sparkles, FileText, BarChart3, MessageSquare, TrendingUp, ArrowRight, CheckCircle2, MapPin, Star } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  motion,
+  animate,
+  useInView,
+  useMotionValue,
+  useMotionTemplate,
+  useSpring,
+  useTransform,
+  useScroll,
+} from "framer-motion";
+import {
+  Sparkles, FileText, BarChart3, MessageSquare,
+  ArrowRight, CheckCircle2, MapPin, Search, ClipboardList, Globe,
+} from "lucide-react";
 
-const features = [
-  { icon: <Briefcase className="w-5 h-5" />, title: "Tổng hợp từ 4 cổng việc làm", desc: "VietnamWorks, TopCV, ITviec, CareerViet — tìm một lần, thấy tất cả.", color: "bg-sky-50 text-sky-600" },
-  { icon: <Sparkles className="w-5 h-5" />, title: "AI đánh giá độ phù hợp", desc: "AI chấm điểm và giải thích chi tiết tại sao bạn phù hợp với vị trí đó.", color: "bg-violet-50 text-violet-600" },
-  { icon: <FileText className="w-5 h-5" />, title: "CV builder thông minh", desc: "Xây dựng CV, nhận gợi ý cải thiện theo checkbox, xuất PDF chuyên nghiệp.", color: "bg-emerald-50 text-emerald-600" },
-  { icon: <BarChart3 className="w-5 h-5" />, title: "Theo dõi ứng tuyển", desc: "Kanban board theo dõi toàn bộ pipeline từ Saved → Applied → Interview → Offer.", color: "bg-fuchsia-50 text-fuchsia-600" },
-  { icon: <MessageSquare className="w-5 h-5" />, title: "AI Chat hỗ trợ 24/7", desc: "Tư vấn chiến lược tìm việc, chuẩn bị phỏng vấn và định hướng nghề nghiệp.", color: "bg-rose-50 text-rose-600" },
-  { icon: <TrendingUp className="w-5 h-5" />, title: "Dashboard thị trường", desc: "Phân tích xu hướng tuyển dụng, mức lương, kỹ năng hot theo từng ngành.", color: "bg-amber-50 text-amber-600" },
+const ease = [0.22, 1, 0.36, 1] as const;
+
+/* ------------------------------ Motion helpers ----------------------------- */
+
+function Reveal({
+  children,
+  delay = 0,
+  className,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+}) {
+  return (
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y: 32 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.7, delay, ease }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function CountUp({ to, suffix = "" }: { to: number; suffix?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-40px" });
+  const [val, setVal] = useState(0);
+
+  useEffect(() => {
+    if (!inView) return;
+    const controls = animate(0, to, {
+      duration: 1.6,
+      ease: "easeOut",
+      onUpdate: (v) => setVal(Math.round(v)),
+    });
+    return () => controls.stop();
+  }, [inView, to]);
+
+  return (
+    <span ref={ref}>
+      {val}
+      {suffix}
+    </span>
+  );
+}
+
+/* Kinetic headline — each word slides up from a clipped line */
+function KineticHeadline({
+  lines,
+  baseDelay = 0,
+}: {
+  lines: { text: string; accent?: boolean }[][];
+  baseDelay?: number;
+}) {
+  let i = 0;
+  return (
+    <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.06] tracking-tight">
+      {lines.map((words, li) => (
+        <span key={li} className="block overflow-hidden pb-1 -mb-1">
+          {words.map((w, wi) => {
+            const delay = baseDelay + i++ * 0.07;
+            return (
+              <motion.span
+                key={wi}
+                initial={{ y: "110%" }}
+                animate={{ y: 0 }}
+                transition={{ duration: 0.8, delay, ease }}
+                className={`inline-block mr-[0.28em] ${
+                  w.accent
+                    ? "bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-400 bg-clip-text text-transparent"
+                    : "text-white"
+                }`}
+              >
+                {w.text}
+              </motion.span>
+            );
+          })}
+        </span>
+      ))}
+    </h1>
+  );
+}
+
+/* ------------------------- Hero 3D floating scene -------------------------- */
+
+function HeroScene() {
+  const ref = useRef<HTMLDivElement>(null);
+  const mx = useMotionValue(0);
+  const my = useMotionValue(0);
+
+  const rotateX = useSpring(useTransform(my, [-0.5, 0.5], [16, 5]), { stiffness: 120, damping: 18 });
+  const rotateY = useSpring(useTransform(mx, [-0.5, 0.5], [-9, 9]), { stiffness: 120, damping: 18 });
+
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
+  const sceneY = useTransform(scrollYProgress, [0, 1], [60, -60]);
+
+  function onMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    const rect = ref.current?.getBoundingClientRect();
+    if (!rect) return;
+    mx.set((e.clientX - rect.left) / rect.width - 0.5);
+    my.set((e.clientY - rect.top) / rect.height - 0.5);
+  }
+
+  function onMouseLeave() {
+    mx.set(0);
+    my.set(0);
+  }
+
+  return (
+    <motion.div
+      ref={ref}
+      onMouseMove={onMouseMove}
+      onMouseLeave={onMouseLeave}
+      style={{ perspective: 1500, y: sceneY }}
+      className="relative mx-auto mt-16 w-full max-w-5xl px-6"
+    >
+      {/* Glow under the scene */}
+      <div className="absolute inset-x-10 top-10 bottom-0 bg-blue-500/20 blur-[100px] rounded-full pointer-events-none" />
+
+      <motion.div
+        initial={{ opacity: 0, y: 80, rotateX: 24 }}
+        animate={{ opacity: 1, y: 0, rotateX: 0 }}
+        transition={{ duration: 1.1, delay: 0.5, ease }}
+        style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
+        className="relative"
+      >
+        {/* Main dashboard card */}
+        <div
+          className="relative bg-white rounded-3xl border border-white/10 overflow-hidden
+                     shadow-[0_60px_120px_-24px_rgba(0,0,0,0.6)]"
+          style={{ transform: "translateZ(0px)" }}
+        >
+          {/* Window chrome */}
+          <div className="h-11 px-5 flex items-center gap-2 border-b border-slate-100 bg-slate-50">
+            <span className="w-2.5 h-2.5 rounded-full bg-slate-200" />
+            <span className="w-2.5 h-2.5 rounded-full bg-slate-200" />
+            <span className="w-2.5 h-2.5 rounded-full bg-slate-200" />
+            <span className="ml-4 text-[11px] text-slate-400 font-medium tracking-wide">vica.app / dashboard</span>
+          </div>
+
+          <div className="flex">
+            {/* Mini sidebar */}
+            <div className="hidden sm:flex w-14 flex-col items-center gap-1.5 py-5 border-r border-slate-100">
+              <span className="text-sm font-bold text-slate-900 mb-3">V</span>
+              {[BarChart3, Search, ClipboardList, FileText].map((Icon, i) => (
+                <span
+                  key={i}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                    i === 0 ? "bg-slate-900 text-white" : "text-slate-300"
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                </span>
+              ))}
+            </div>
+
+            {/* Dashboard body */}
+            <div className="flex-1 p-6 sm:p-8">
+              <p className="text-base font-bold text-slate-900 tracking-tight">Chào buổi sáng, Thái</p>
+              <p className="text-xs text-slate-500 mt-0.5 mb-6">Tiến độ tìm việc của bạn tuần này</p>
+
+              <div className="grid grid-cols-4 border-y border-slate-200 divide-x divide-slate-200 mb-6">
+                {[
+                  { v: "24", l: "Đơn ứng tuyển" },
+                  { v: "8", l: "Đang active" },
+                  { v: "3", l: "Phỏng vấn" },
+                  { v: "86", l: "Điểm fit TB" },
+                ].map((s) => (
+                  <div key={s.l} className="py-4 px-3 sm:px-5">
+                    <p className="text-lg sm:text-2xl font-bold text-slate-900">{s.v}</p>
+                    <p className="text-[10px] sm:text-[11px] text-slate-500 mt-0.5">{s.l}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-3">
+                {[
+                  { label: "Frontend Developer · Tiki", w: "86%" },
+                  { label: "Product Engineer · MoMo", w: "72%" },
+                  { label: "Fullstack Intern · VNG", w: "64%" },
+                ].map((row) => (
+                  <div key={row.label}>
+                    <div className="flex justify-between text-[11px] mb-1.5">
+                      <span className="text-slate-500">{row.label}</span>
+                      <span className="text-slate-900 font-semibold">{row.w}</span>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-blue-600 rounded-full" style={{ width: row.w }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Floating: AI fit score */}
+        <motion.div
+          animate={{ y: [0, -10, 0] }}
+          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -top-10 -right-4 sm:-right-12 w-48 bg-white/95 backdrop-blur rounded-2xl border border-white/40 p-4
+                     shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)]"
+          style={{ transform: "translateZ(100px)" }}
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
+              <Sparkles className="w-3.5 h-3.5 text-white" />
+            </span>
+            <p className="text-[11px] font-semibold text-slate-900 leading-tight">Đánh giá AI</p>
+          </div>
+          <p className="text-2xl font-bold text-slate-900">
+            86<span className="text-sm text-slate-300 font-semibold">/100</span>
+          </p>
+          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mt-2">
+            <div className="h-full w-[86%] bg-blue-600 rounded-full" />
+          </div>
+          <p className="text-[10px] text-slate-500 mt-2">Phù hợp cao với vị trí này</p>
+        </motion.div>
+
+        {/* Floating: job row */}
+        <motion.div
+          animate={{ y: [0, 12, 0] }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
+          className="absolute -bottom-8 -left-4 sm:-left-14 w-60 bg-white/95 backdrop-blur rounded-2xl border border-white/40 p-4
+                     shadow-[0_32px_64px_-12px_rgba(0,0,0,0.45)]"
+          style={{ transform: "translateZ(80px)" }}
+        >
+          <div className="flex items-center gap-3">
+            <span className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-700">
+              T
+            </span>
+            <div className="min-w-0">
+              <p className="text-[12px] font-semibold text-slate-900 truncate">Frontend Developer</p>
+              <p className="text-[10px] text-slate-500 flex items-center gap-1">
+                <MapPin className="w-3 h-3" /> TP.HCM · Remote
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-1.5 mt-3">
+            {["React", "TypeScript", "Next.js"].map((s) => (
+              <span key={s} className="text-[9px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">
+                {s}
+              </span>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Floating: CV chip */}
+        <motion.div
+          animate={{ y: [0, -8, 0] }}
+          transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 1.6 }}
+          className="absolute top-1/3 -left-3 sm:-left-20 bg-slate-900/90 backdrop-blur border border-white/10 text-white rounded-xl px-4 py-2.5
+                     flex items-center gap-2 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.6)]"
+          style={{ transform: "translateZ(120px)" }}
+        >
+          <CheckCircle2 className="w-3.5 h-3.5 text-cyan-300" />
+          <span className="text-[11px] font-semibold">CV đã tối ưu cho vị trí</span>
+        </motion.div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* --------------------------------- Marquee --------------------------------- */
+
+const marqueeItems = [
+  "VietnamWorks", "TopCV", "ITviec", "CareerViet",
+  "Frontend Developer", "Data Analyst", "Product Manager", "UI/UX Designer",
+  "Backend Engineer", "Business Analyst", "QA Engineer", "DevOps",
 ];
 
-const stats = [
-  { value: "4+", label: "Cổng việc làm" },
-  { value: "10k+", label: "Việc làm mới / tuần" },
-  { value: "AI", label: "Đánh giá tự động" },
-  { value: "100%", label: "Miễn phí" },
+function Marquee() {
+  return (
+    <div
+      className="relative py-7 border-t border-white/5 overflow-hidden"
+      style={{ maskImage: "linear-gradient(to right, transparent, black 12%, black 88%, transparent)" }}
+    >
+      <div className="flex w-max animate-marquee gap-12">
+        {[...marqueeItems, ...marqueeItems].map((item, i) => (
+          <span key={i} className="flex items-center gap-12 text-sm font-medium text-white/30 whitespace-nowrap">
+            {item}
+            <span className="w-1 h-1 rounded-full bg-white/15" />
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------ Bento features ----------------------------- */
+
+function BentoCard({
+  children,
+  className,
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 32 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.7, delay, ease }}
+      whileHover={{ y: -6, rotateX: 2, rotateY: -2 }}
+      style={{ transformPerspective: 1000 }}
+      className={`bg-white rounded-3xl border border-slate-200 p-7 lg:p-8 overflow-hidden relative
+                  shadow-[0_1px_2px_rgba(15,23,42,0.04)]
+                  hover:shadow-[0_32px_64px_-20px_rgba(15,23,42,0.16)] hover:border-slate-300
+                  transition-[box-shadow,border-color] duration-300 ${className ?? ""}`}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function BentoFeatures() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-5 lg:gap-6">
+      {/* AI evaluation — large card */}
+      <BentoCard className="md:col-span-2">
+        <div className="flex flex-col sm:flex-row gap-8 items-start">
+          <div className="flex-1">
+            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center mb-5">
+              <Sparkles className="w-[18px] h-[18px] text-blue-600" />
+            </div>
+            <h3 className="font-semibold text-slate-900 text-lg mb-2">AI đánh giá độ phù hợp</h3>
+            <p className="text-slate-500 text-sm leading-relaxed">
+              AI chấm điểm theo 4 tiêu chí và giải thích chi tiết tại sao bạn phù hợp —
+              kèm khuyến nghị cải thiện cụ thể cho từng vị trí.
+            </p>
+          </div>
+          <div className="w-full sm:w-64 bg-slate-50 rounded-2xl border border-slate-200 p-4 shrink-0">
+            {[
+              { label: "Kỹ năng kỹ thuật", score: 82 },
+              { label: "Kinh nghiệm", score: 65 },
+              { label: "Văn hóa & hành vi", score: 78 },
+            ].map((item, i) => (
+              <div key={item.label} className={i > 0 ? "mt-3" : ""}>
+                <div className="flex justify-between text-[11px] mb-1">
+                  <span className="text-slate-500">{item.label}</span>
+                  <span className="text-slate-900 font-semibold">{item.score}</span>
+                </div>
+                <div className="h-1.5 bg-slate-200/70 rounded-full overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    whileInView={{ width: `${item.score}%` }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.9, delay: 0.3 + i * 0.12, ease }}
+                    className="h-full bg-blue-600 rounded-full"
+                  />
+                </div>
+              </div>
+            ))}
+            <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between">
+              <span className="text-[11px] text-slate-500">Tổng điểm</span>
+              <span className="text-sm font-bold text-blue-600">86/100</span>
+            </div>
+          </div>
+        </div>
+      </BentoCard>
+
+      {/* 4 portals */}
+      <BentoCard delay={0.08}>
+        <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center mb-5">
+          <Globe className="w-[18px] h-[18px] text-blue-600" />
+        </div>
+        <h3 className="font-semibold text-slate-900 text-lg mb-2">4 cổng việc làm, 1 ô tìm kiếm</h3>
+        <p className="text-slate-500 text-sm leading-relaxed mb-5">
+          Tìm một lần, thấy tất cả — kết quả được gộp và khử trùng lặp.
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {["VietnamWorks", "TopCV", "ITviec", "CareerViet"].map((p, i) => (
+            <motion.span
+              key={p}
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: 0.3 + i * 0.08, ease }}
+              className="text-[11px] font-semibold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-center"
+            >
+              {p}
+            </motion.span>
+          ))}
+        </div>
+      </BentoCard>
+
+      {/* Kanban */}
+      <BentoCard delay={0.05}>
+        <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center mb-5">
+          <ClipboardList className="w-[18px] h-[18px] text-blue-600" />
+        </div>
+        <h3 className="font-semibold text-slate-900 text-lg mb-2">Theo dõi ứng tuyển</h3>
+        <p className="text-slate-500 text-sm leading-relaxed mb-5">
+          Kanban board cho toàn bộ pipeline — không bỏ sót deadline nào.
+        </p>
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { label: "Applied", cards: 2, dot: "bg-slate-900" },
+            { label: "Interview", cards: 2, dot: "bg-amber-400" },
+            { label: "Offer", cards: 1, dot: "bg-emerald-500" },
+          ].map((col, ci) => (
+            <div key={col.label}>
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className={`w-1.5 h-1.5 rounded-full ${col.dot}`} />
+                <span className="text-[10px] font-semibold text-slate-500">{col.label}</span>
+              </div>
+              <div className="space-y-1.5">
+                {Array.from({ length: col.cards }).map((_, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: 0.3 + (ci * 2 + i) * 0.07, ease }}
+                    className="h-8 bg-slate-50 border border-slate-200 rounded-lg"
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </BentoCard>
+
+      {/* CV builder */}
+      <BentoCard delay={0.1}>
+        <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center mb-5">
+          <FileText className="w-[18px] h-[18px] text-blue-600" />
+        </div>
+        <h3 className="font-semibold text-slate-900 text-lg mb-2">CV builder thông minh</h3>
+        <p className="text-slate-500 text-sm leading-relaxed mb-5">
+          Xây dựng CV, nhận gợi ý cải thiện từ AI, xuất PDF chuyên nghiệp.
+        </p>
+        <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4">
+          <div className="h-2 w-1/2 bg-slate-300 rounded-full mb-2" />
+          <div className="h-1.5 w-3/4 bg-slate-200 rounded-full mb-1.5" />
+          <div className="h-1.5 w-2/3 bg-slate-200 rounded-full mb-3" />
+          <div className="flex gap-1.5">
+            {["Đã tối ưu từ khóa", "ATS-friendly"].map((t, i) => (
+              <motion.span
+                key={t}
+                initial={{ opacity: 0, x: -8 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: 0.35 + i * 0.1, ease }}
+                className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-700 bg-blue-50 border border-blue-100 rounded-md px-2 py-1"
+              >
+                <CheckCircle2 className="w-3 h-3" /> {t}
+              </motion.span>
+            ))}
+          </div>
+        </div>
+      </BentoCard>
+
+      {/* AI chat */}
+      <BentoCard delay={0.12}>
+        <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center mb-5">
+          <MessageSquare className="w-[18px] h-[18px] text-blue-600" />
+        </div>
+        <h3 className="font-semibold text-slate-900 text-lg mb-2">AI đồng hành mọi trang</h3>
+        <p className="text-slate-500 text-sm leading-relaxed mb-5">
+          Trợ lý AI hiểu ngữ cảnh trang bạn đang xem — hỏi đáp ngay tại chỗ, không cần chuyển trang.
+        </p>
+        <div className="space-y-2">
+          <motion.div
+            initial={{ opacity: 0, x: 16 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.3, ease }}
+            className="ml-auto w-fit max-w-[90%] bg-slate-900 text-white text-[12px] rounded-2xl rounded-br-sm px-4 py-2.5"
+          >
+            Tôi có phù hợp với việc này không?
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, x: -16 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.5, ease }}
+            className="w-fit max-w-[90%] bg-slate-100 text-slate-700 text-[12px] rounded-2xl rounded-bl-sm px-4 py-2.5"
+          >
+            Rất phù hợp — kỹ năng React khớp 86%. Nên nhấn mạnh dự án gần nhất.
+          </motion.div>
+        </div>
+      </BentoCard>
+    </div>
+  );
+}
+
+/* -------------------------------- How it works ----------------------------- */
+
+const steps = [
+  { num: "01", title: "Tạo hồ sơ trong 2 phút", desc: "Upload CV — AI tự động phân tích kỹ năng, kinh nghiệm và xây hồ sơ cho bạn." },
+  { num: "02", title: "Tìm và đánh giá việc làm", desc: "Tìm kiếm trên 4 cổng cùng lúc, AI chấm điểm độ phù hợp từng vị trí." },
+  { num: "03", title: "Ứng tuyển và theo dõi", desc: "CV được tối ưu cho từng vị trí, pipeline ứng tuyển nằm gọn trong một board." },
 ];
 
-const benefits = [
-  "Không cần tìm trên nhiều trang",
-  "AI chỉ ra chính xác điểm mạnh / yếu của bạn",
-  "CV được tối ưu cho từng vị trí",
-  "Theo dõi tất cả đơn ứng tuyển một chỗ",
-];
+function HowItWorks() {
+  return (
+    <div className="grid md:grid-cols-3 gap-10 md:gap-8 relative">
+      <div className="hidden md:block absolute top-7 left-[16.66%] right-[16.66%] h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+      {steps.map((s, i) => (
+        <motion.div
+          key={s.num}
+          initial={{ opacity: 0, y: 32 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-60px" }}
+          transition={{ duration: 0.7, delay: i * 0.15, ease }}
+          className="relative text-center md:px-4"
+        >
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-slate-900 text-white flex items-center justify-center text-sm font-bold mb-6 relative z-10 shadow-[0_12px_24px_-8px_rgba(15,23,42,0.4)]">
+            {s.num}
+          </div>
+          <h3 className="font-semibold text-slate-900 text-lg mb-2">{s.title}</h3>
+          <p className="text-slate-500 text-sm leading-relaxed max-w-xs mx-auto">{s.desc}</p>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+/* --------------------------------- Page ------------------------------------ */
 
 export default function LandingPage() {
+  const heroRef = useRef<HTMLElement>(null);
+  const spotX = useMotionValue(600);
+  const spotY = useMotionValue(300);
+  const spotlight = useMotionTemplate`radial-gradient(640px at ${spotX}px ${spotY}px, rgba(59,130,246,0.14), transparent 80%)`;
+
+  function onHeroMouseMove(e: React.MouseEvent<HTMLElement>) {
+    const rect = heroRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    spotX.set(e.clientX - rect.left);
+    spotY.set(e.clientY - rect.top);
+  }
+
   return (
-    <div className="min-h-screen bg-white font-sans">
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center">
-            <span className="font-bold text-slate-900 text-2xl tracking-tight">Vica</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link href="/auth/login" className="text-slate-600 hover:text-slate-900 px-4 py-2 text-sm font-medium transition-colors duration-150">Đăng nhập</Link>
-            <Link href="/auth/register" className="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-150 shadow-btn-cta hover:shadow-none">Bắt đầu miễn phí</Link>
-          </div>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-white font-sans overflow-x-hidden">
+      {/* Floating glass pill nav */}
+      <motion.nav
+        initial={{ y: -24, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.7, ease }}
+        className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1
+                   bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-full pl-5 pr-1.5 py-1.5
+                   shadow-[0_16px_40px_-12px_rgba(0,0,0,0.45)]"
+      >
+        <span className="font-bold text-white text-base tracking-tight mr-3">Vica</span>
+        <Link
+          href="/auth/login"
+          className="text-white/60 hover:text-white px-3 py-2 text-sm font-medium transition-colors"
+        >
+          Đăng nhập
+        </Link>
+        <Link
+          href="/auth/register"
+          className="bg-white hover:bg-slate-100 text-slate-900 px-4 py-2 rounded-full text-sm font-semibold transition-colors"
+        >
+          Bắt đầu miễn phí
+        </Link>
+      </motion.nav>
 
-      <section className="pt-32 pb-20 px-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-brand-50/60 to-white pointer-events-none" />
-        <div className="absolute inset-0 opacity-[0.025]" style={{ backgroundImage: "linear-gradient(#4338CA 1px, transparent 1px), linear-gradient(to right, #4338CA 1px, transparent 1px)", backgroundSize: "48px 48px" }} />
-        <div className="absolute top-16 right-0 w-[480px] h-[480px] bg-brand-100 rounded-full blur-3xl opacity-60 pointer-events-none" />
-        <div className="absolute -bottom-10 -left-10 w-80 h-80 bg-emerald-100 rounded-full blur-3xl opacity-50 pointer-events-none" />
+      {/* ============================== HERO (dark) ============================== */}
+      <section
+        ref={heroRef}
+        onMouseMove={onHeroMouseMove}
+        className="relative bg-slate-950 min-h-screen flex flex-col pt-28 pb-0 overflow-hidden"
+      >
+        {/* Grid lines */}
+        <div
+          className="absolute inset-0 opacity-[0.5] pointer-events-none"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(to right, rgba(255,255,255,0.035) 1px, transparent 1px)",
+            backgroundSize: "56px 56px",
+            maskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black, transparent)",
+          }}
+        />
+        {/* Aurora blobs */}
+        <div className="absolute -top-32 left-1/4 w-[480px] h-[480px] bg-blue-600/25 rounded-full blur-[120px] animate-aurora pointer-events-none" />
+        <div
+          className="absolute top-20 right-1/5 w-[380px] h-[380px] bg-cyan-500/15 rounded-full blur-[110px] animate-aurora pointer-events-none"
+          style={{ animationDelay: "-6s" }}
+        />
+        <div
+          className="absolute top-72 left-1/2 w-[320px] h-[320px] bg-indigo-600/20 rounded-full blur-[100px] animate-aurora pointer-events-none"
+          style={{ animationDelay: "-11s" }}
+        />
+        {/* Mouse spotlight */}
+        <motion.div className="absolute inset-0 pointer-events-none" style={{ background: spotlight }} />
 
-        <div className="max-w-4xl mx-auto text-center relative">
-          <div className="inline-flex items-center gap-2 bg-brand-50 border border-brand-100 text-brand-700 text-xs font-semibold px-3.5 py-1.5 rounded-full mb-8 tracking-wide">
-            <Sparkles className="w-3.5 h-3.5" />
-            Nền tảng AI tìm việc cho sinh viên Việt Nam
-          </div>
+        <div className="relative flex-1 flex flex-col justify-center w-full">
+        <div className="max-w-4xl mx-auto text-center px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.1, ease }}
+            className="inline-flex items-center gap-2 border border-white/10 bg-white/5 backdrop-blur text-white/60 text-xs font-medium px-4 py-1.5 rounded-full mb-9"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-pulse" />
+            AI đồng hành toàn bộ hành trình tìm việc
+          </motion.div>
 
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-slate-900 leading-[1.05] tracking-tight mb-6">
-            Tìm việc thông minh<br />
-            <span className="text-brand-600">dành cho sinh viên</span><br />
-            <span className="text-emerald-500">Việt Nam.</span>
-          </h1>
+          <KineticHeadline
+            baseDelay={0.15}
+            lines={[
+              [{ text: "Tìm" }, { text: "việc" }, { text: "thông" }, { text: "minh," }],
+              [{ text: "bắt", accent: true }, { text: "đầu", accent: true }, { text: "từ", accent: true }, { text: "hôm", accent: true }, { text: "nay.", accent: true }],
+            ]}
+          />
 
-          <p className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto mb-10 leading-relaxed font-body">
-            Từ tìm kiếm, đánh giá độ phù hợp AI, tạo CV đến theo dõi ứng tuyển — tất cả trong một nền tảng, hoàn toàn miễn phí.
-          </p>
+          <motion.p
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.6, ease }}
+            className="text-lg text-white/50 max-w-2xl mx-auto mt-7 mb-11 leading-relaxed"
+          >
+            Từ tìm kiếm, đánh giá độ phù hợp AI, tạo CV đến theo dõi ứng tuyển —
+            tất cả trong một nền tảng, hoàn toàn miễn phí.
+          </motion.p>
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-16">
-            <Link href="/auth/register" className="inline-flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 rounded-xl font-bold text-base transition-all duration-200 shadow-btn-cta hover:shadow-none hover:-translate-y-0.5">
-              Bắt đầu miễn phí <ArrowRight className="w-4 h-4" />
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.72, ease }}
+            className="flex flex-col sm:flex-row gap-3 justify-center"
+          >
+            <Link
+              href="/auth/register"
+              className="group inline-flex items-center justify-center gap-2 bg-white hover:bg-slate-100 text-slate-900 px-8 py-4 rounded-2xl font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_48px_-12px_rgba(255,255,255,0.25)]"
+            >
+              Bắt đầu miễn phí
+              <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" />
             </Link>
-            <Link href="/auth/login" className="inline-flex items-center justify-center gap-2 border border-slate-200 hover:border-slate-300 text-slate-700 hover:text-slate-900 px-8 py-4 rounded-xl font-semibold text-base transition-all duration-200 hover:bg-slate-50">
+            <Link
+              href="/auth/login"
+              className="inline-flex items-center justify-center gap-2 border border-white/15 bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-2xl font-semibold transition-colors backdrop-blur"
+            >
               Đã có tài khoản
             </Link>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-2xl mx-auto">
-            {stats.map((s) => (
-              <div key={s.label} className="text-center">
-                <div className="text-2xl font-extrabold text-brand-600 mb-1">{s.value}</div>
-                <div className="text-xs text-slate-500 font-medium font-body">{s.label}</div>
-              </div>
-            ))}
-          </div>
+          </motion.div>
         </div>
+
+          <HeroScene />
+        </div>
+
+        <Marquee />
       </section>
 
-      <section className="py-20 px-6 bg-slate-50">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight mb-3">Mọi thứ bạn cần để tìm việc</h2>
-            <p className="text-slate-500 max-w-lg mx-auto font-body">Được thiết kế riêng cho sinh viên mới ra trường tại thị trường Việt Nam</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {features.map((f, i) => (
-              <div key={f.title} className="bg-white rounded-2xl p-6 border border-slate-100 shadow-card hover:shadow-card-hover hover:-translate-y-1 transition-all duration-200 cursor-default" style={{ animationDelay: `${i * 50}ms` }}>
-                <div className={`w-10 h-10 ${f.color} rounded-xl flex items-center justify-center mb-4`}>{f.icon}</div>
-                <h3 className="font-bold text-slate-900 text-base mb-2">{f.title}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed font-body">{f.desc}</p>
+      {/* ============================ Stats counters ============================ */}
+      <section className="px-6 sm:px-8 lg:px-12 py-20 sm:py-24 bg-white">
+        <Reveal className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 border-y border-slate-200 divide-x divide-slate-200">
+            <div className="py-10 px-6 text-center">
+              <div className="text-3xl md:text-4xl font-bold text-slate-900 mb-1.5">
+                <CountUp to={4} suffix="+" />
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="py-20 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-16 items-center">
-            <div>
-              <div className="inline-block bg-brand-100 text-brand-700 text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-widest mb-6">Tại sao chọn Vica?</div>
-              <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight mb-6">Không chỉ là trang tìm việc</h2>
-              <p className="text-slate-500 mb-8 leading-relaxed font-body">Vica là người đồng hành nghề nghiệp — từ lúc bạn còn chưa biết bắt đầu từ đâu, đến khi nhận được offer đầu tiên.</p>
-              <ul className="space-y-3">
-                {benefits.map((b) => (
-                  <li key={b} className="flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-                    <span className="text-slate-700 text-sm font-medium font-body">{b}</span>
-                  </li>
-                ))}
-              </ul>
-              <Link href="/auth/register" className="inline-flex items-center gap-2 mt-10 bg-brand-700 hover:bg-brand-900 text-white px-7 py-3.5 rounded-xl font-bold text-sm transition-all duration-200 hover:-translate-y-0.5 shadow-btn-brand">
-                Dùng thử ngay — Miễn phí <ArrowRight className="w-4 h-4" />
-              </Link>
+              <div className="text-xs text-slate-500 font-medium">Cổng việc làm</div>
             </div>
-
-            <div className="relative">
-              <div className="bg-brand-900 rounded-3xl p-8 text-white relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-48 h-48 bg-brand-700 rounded-full blur-3xl opacity-50" />
-                <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-500 rounded-full blur-3xl opacity-20" />
-                <div className="relative">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
-                      <Sparkles className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <div className="text-xs text-white/60 font-body">Đánh giá AI</div>
-                      <div className="font-bold text-sm">Frontend Developer @ Tiki</div>
-                    </div>
-                  </div>
-                  <div className="space-y-3 mb-6">
-                    {[{ label: "Kỹ năng kỹ thuật", score: 82 }, { label: "Kinh nghiệm", score: 65 }, { label: "Văn hóa & hành vi", score: 78 }].map((item) => (
-                      <div key={item.label}>
-                        <div className="flex justify-between text-xs mb-1.5 font-body">
-                          <span className="text-white/70">{item.label}</span>
-                          <span className="text-white font-semibold">{item.score}/100</span>
-                        </div>
-                        <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                          <div className="h-full bg-emerald-400 rounded-full transition-all duration-500" style={{ width: `${item.score}%` }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="bg-white/10 rounded-xl p-4 border border-white/10">
-                    <div className="text-xs text-white/60 mb-1 font-body">Nhận xét AI</div>
-                    <p className="text-white text-sm leading-relaxed font-body">Bạn có nền tảng React tốt. Cần bổ sung kinh nghiệm TypeScript và quen với CI/CD để cạnh tranh tốt hơn.</p>
-                  </div>
-                  <div className="mt-4 flex items-center gap-2">
-                    <div className="flex">{[1,2,3,4,5].map(i => <Star key={i} className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />)}</div>
-                    <span className="text-white/60 text-xs font-body">Phù hợp cao</span>
-                  </div>
-                </div>
+            <div className="py-10 px-6 text-center">
+              <div className="text-3xl md:text-4xl font-bold text-slate-900 mb-1.5">
+                <CountUp to={10} suffix="k+" />
               </div>
-              <div className="absolute -bottom-4 -left-4 bg-white rounded-xl shadow-card-hover px-4 py-3 border border-slate-100">
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-brand-600" />
-                  <span className="text-xs font-semibold text-slate-700">Hà Nội · TP.HCM · Remote</span>
-                </div>
+              <div className="text-xs text-slate-500 font-medium">Việc làm mới / tuần</div>
+            </div>
+            <div className="py-10 px-6 text-center">
+              <div className="text-3xl md:text-4xl font-bold text-blue-600 mb-1.5">AI</div>
+              <div className="text-xs text-slate-500 font-medium">Đánh giá tự động</div>
+            </div>
+            <div className="py-10 px-6 text-center">
+              <div className="text-3xl md:text-4xl font-bold text-slate-900 mb-1.5">
+                <CountUp to={100} suffix="%" />
               </div>
+              <div className="text-xs text-slate-500 font-medium">Miễn phí</div>
             </div>
           </div>
+        </Reveal>
+      </section>
+
+      {/* ============================ Bento features ============================ */}
+      <section className="py-24 sm:py-28 px-6 sm:px-8 lg:px-12 bg-slate-50 border-y border-slate-200/70">
+        <div className="max-w-7xl mx-auto">
+          <Reveal className="text-center mb-16">
+            <p className="text-xs font-semibold text-blue-600 tracking-[0.2em] uppercase mb-4">Tính năng</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight mb-3">
+              Mọi thứ bạn cần để tìm việc
+            </h2>
+            <p className="text-slate-500 max-w-lg mx-auto">
+              Một nền tảng duy nhất cho toàn bộ hành trình ứng tuyển của bạn
+            </p>
+          </Reveal>
+          <BentoFeatures />
         </div>
       </section>
 
-      <section className="py-20 px-6 bg-gradient-to-br from-brand-700 to-brand-900 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-brand-600 rounded-full blur-3xl opacity-40 pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500 rounded-full blur-3xl opacity-10 pointer-events-none" />
-        <div className="max-w-2xl mx-auto text-center relative">
-          <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4">Sẵn sàng bắt đầu?</h2>
-          <p className="text-brand-200 mb-8 font-body">Tạo tài khoản miễn phí và bắt đầu tìm kiếm việc làm ngay hôm nay.</p>
-          <Link href="/auth/register" className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white px-10 py-4 rounded-xl font-bold text-base transition-all duration-200 shadow-btn-cta hover:-translate-y-0.5">
-            Đăng ký miễn phí <ArrowRight className="w-4 h-4" />
+      {/* ============================= How it works ============================= */}
+      <section className="py-28 px-6 sm:px-8 lg:px-12 bg-white">
+        <div className="max-w-6xl mx-auto">
+          <Reveal className="text-center mb-20">
+            <p className="text-xs font-semibold text-blue-600 tracking-[0.2em] uppercase mb-4">Cách hoạt động</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight">
+              Ba bước đến offer đầu tiên
+            </h2>
+          </Reveal>
+          <HowItWorks />
+        </div>
+      </section>
+
+      {/* ================================= CTA ================================= */}
+      <section className="relative bg-slate-950 py-36 px-6 sm:px-8 lg:px-12 overflow-hidden">
+        <div className="absolute -top-24 left-1/3 w-[420px] h-[420px] bg-blue-600/25 rounded-full blur-[120px] animate-aurora pointer-events-none" />
+        <div
+          className="absolute bottom-0 right-1/4 w-[360px] h-[360px] bg-cyan-500/15 rounded-full blur-[110px] animate-aurora pointer-events-none"
+          style={{ animationDelay: "-8s" }}
+        />
+        <div
+          className="absolute inset-0 opacity-50 pointer-events-none"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px)",
+            backgroundSize: "56px 56px",
+            maskImage: "radial-gradient(ellipse 70% 70% at 50% 50%, black, transparent)",
+          }}
+        />
+        <Reveal className="relative max-w-3xl mx-auto text-center">
+          <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-5 leading-tight">
+            Sẵn sàng cho{" "}
+            <span className="bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-400 bg-clip-text text-transparent">
+              offer đầu tiên?
+            </span>
+          </h2>
+          <p className="text-white/50 mb-10 max-w-md mx-auto leading-relaxed">
+            Tạo tài khoản miễn phí và bắt đầu tìm kiếm việc làm ngay hôm nay.
+          </p>
+          <Link
+            href="/auth/register"
+            className="group inline-flex items-center gap-2 bg-white hover:bg-slate-100 text-slate-900 px-10 py-4 rounded-2xl font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_48px_-12px_rgba(255,255,255,0.25)]"
+          >
+            Đăng ký miễn phí
+            <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" />
           </Link>
-        </div>
+        </Reveal>
       </section>
 
-      <footer className="bg-brand-900 border-t border-white/5 py-8 px-6">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center">
-            <span className="font-bold text-white/60 text-base tracking-tight font-sans">Vica</span>
-            <span className="text-white/30 text-sm font-body ml-2">· 2025</span>
+      {/* =============================== Footer ================================ */}
+      <footer className="relative bg-white overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-10 flex items-center justify-between relative z-10">
+          <div className="flex items-baseline gap-2">
+            <span className="font-bold text-slate-900 text-base tracking-tight">Vica</span>
+            <span className="text-slate-400 text-sm">· 2025</span>
           </div>
-          <p className="text-white/30 text-xs font-body">VietnamWorks · TopCV · ITviec · CareerViet</p>
+          <p className="text-slate-400 text-xs">VietnamWorks · TopCV · ITviec · CareerViet</p>
         </div>
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.9, ease }}
+          aria-hidden
+          className="text-center font-bold text-slate-100 select-none pointer-events-none leading-none
+                     text-[26vw] md:text-[20vw] -mb-[5vw] tracking-tight"
+        >
+          Vica
+        </motion.div>
       </footer>
     </div>
   );

@@ -286,11 +286,10 @@ export interface PromptInputBoxProps {
   onFileAdded?: (file: File) => void;
   /** Minimal mode: hides the Search/Think/Canvas toggles and voice recording. */
   simple?: boolean;
-  disabled?: boolean;
 }
 
 export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref: React.Ref<HTMLDivElement>) => {
-  const { onSend = () => {}, isLoading = false, placeholder = "Hỏi thêm về CV của bạn...", className, accept = "image/*", attachTooltip, onFileAdded, simple = false, disabled = false } = props;
+  const { onSend = () => {}, isLoading = false, placeholder = "Hỏi thêm về CV của bạn...", className, accept = "image/*", attachTooltip, onFileAdded, simple = false } = props;
   const [input, setInput] = React.useState("");
   const [files, setFiles] = React.useState<File[]>([]);
   const [filePreviews, setFilePreviews] = React.useState<Record<string, string>>({});
@@ -362,7 +361,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
   }, [handlePaste]);
 
   const handleSubmit = () => {
-    if (disabled || (!input.trim() && files.length === 0)) return;
+    if (!input.trim() && files.length === 0) return;
     let prefix = "";
     if (showSearch) prefix = "[Search: ";
     else if (showThink) prefix = "[Think: ";
@@ -384,7 +383,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
         isLoading={isLoading}
         onSubmit={handleSubmit}
         className={cn("w-full bg-[#1F2023] border-[#444444]", isRecording && "border-red-500/70", className)}
-        disabled={disabled || isLoading || isRecording}
+        disabled={isLoading || isRecording}
         ref={ref || promptBoxRef}
         onDragOver={(e) => e.preventDefault()}
         onDragLeave={(e) => e.preventDefault()}
@@ -492,7 +491,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
               size="icon"
               className={cn("h-8 w-8 rounded-full transition-all duration-200", isRecording ? "bg-transparent hover:bg-gray-600/30 text-red-500" : hasContent ? "bg-white hover:bg-white/80 text-[#1F2023]" : "bg-transparent hover:bg-gray-600/30 text-[#9CA3AF]")}
               onClick={() => { if (isRecording) setIsRecording(false); else if (hasContent) handleSubmit(); else if (!simple) setIsRecording(true); }}
-              disabled={disabled || (isLoading && !hasContent) || (simple && !hasContent)}
+              disabled={(isLoading && !hasContent) || (simple && !hasContent)}
             >
               {isLoading ? <Square className="h-4 w-4 fill-[#1F2023] animate-pulse" /> : isRecording ? <StopCircle className="h-5 w-5 text-red-500" /> : hasContent ? <ArrowUp className="h-4 w-4 text-[#1F2023]" /> : simple ? <ArrowUp className="h-4 w-4" /> : <Mic className="h-5 w-5" />}
             </Button>

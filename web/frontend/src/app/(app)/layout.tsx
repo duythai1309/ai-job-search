@@ -28,32 +28,47 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => {
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    supabase.auth.getUser().then(({ data }) => {
-      const full = data.user?.user_metadata?.full_name || "";
-      const email = data.user?.email || "";
-      setUserName(full || email.split("@")[0]);
-      setUserEmail(email);
-      const parts = full.trim().split(" ").filter(Boolean);
-      if (parts.length >= 2) {
-        setInitials((parts[0][0] + parts[parts.length - 1][0]).toUpperCase());
-      } else if (full) {
-        setInitials(full.slice(0, 2).toUpperCase());
-      } else {
-        setInitials(email.slice(0, 2).toUpperCase());
-      }
-    });
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    // No Supabase / mock mode: show a sample user instead of crashing.
+    if (!url || !key) {
+      setUserName("Nguyễn Đức Thái");
+      setUserEmail("thai.nguyen@example.com");
+      setInitials("NT");
+      return;
+    }
+    try {
+      const supabase = createBrowserClient(url, key);
+      supabase.auth.getUser().then(({ data }) => {
+        const full = data.user?.user_metadata?.full_name || "";
+        const email = data.user?.email || "";
+        setUserName(full || email.split("@")[0]);
+        setUserEmail(email);
+        const parts = full.trim().split(" ").filter(Boolean);
+        if (parts.length >= 2) {
+          setInitials((parts[0][0] + parts[parts.length - 1][0]).toUpperCase());
+        } else if (full) {
+          setInitials(full.slice(0, 2).toUpperCase());
+        } else {
+          setInitials(email.slice(0, 2).toUpperCase());
+        }
+      });
+    } catch {
+      /* ignore — mock/offline mode */
+    }
   }, []);
 
   const handleSignOut = async () => {
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    await supabase.auth.signOut();
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (url && key) {
+      try {
+        const supabase = createBrowserClient(url, key);
+        await supabase.auth.signOut();
+      } catch {
+        /* ignore */
+      }
+    }
     router.push("/auth/login");
   };
 

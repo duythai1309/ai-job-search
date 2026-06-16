@@ -54,7 +54,7 @@ export interface Skill {
 export interface JobPosting {
   id: string;
   external_id?: string;
-  source: string;
+  source: "vietnamworks" | "topcv" | "itviec" | "careerviet" | "jobsgo" | "ybox" | "vieclam24h" | "other";
   title: string;
   company: string;
   company_logo_url?: string;
@@ -73,11 +73,9 @@ export interface JobPosting {
   skills_required: string[];
   posted_at?: string;
   deadline?: string;
-  url?: string;
+  url: string;
   is_active: boolean;
   scraped_at: string;
-  is_seeded: boolean;
-  availability_status: string;
 }
 
 export interface FitEvaluation {
@@ -174,6 +172,8 @@ export const SOURCE_LABELS: Record<string, string> = {
   itviec: "ITviec",
   careerviet: "CareerViet",
   jobsgo: "JobsGo",
+  ybox: "YBOX",
+  vieclam24h: "Vieclam24h",
   other: "Khác",
 };
 

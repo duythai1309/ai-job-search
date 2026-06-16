@@ -1,13 +1,12 @@
 "use client";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { JobPosting, SOURCE_LABELS, formatSalary } from "@/lib/types";
-import { canApplyToJob } from "@/lib/contracts";
 import toast from "react-hot-toast";
 import {
   Search, MapPin, Bookmark, ExternalLink, Briefcase,
-  Clock, Building2,
+  Clock, Building2, RefreshCw,
 } from "lucide-react";
 
 const SOURCES = [
@@ -15,6 +14,8 @@ const SOURCES = [
   { id: "topcv",        label: "TopCV" },
   { id: "itviec",       label: "ITviec" },
   { id: "careerviet",   label: "CareerViet" },
+  { id: "ybox",         label: "YBOX" },
+  { id: "vieclam24h",   label: "Vieclam24h" },
 ];
 
 const QUICK_SEARCHES = [
@@ -52,12 +53,9 @@ export default function JobsPage() {
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [jobs, setJobs] = useState<JobPosting[]>([]);
   const [loading, setLoading] = useState(false);
+  const [crawling, setCrawling] = useState(false);
   const [searched, setSearched] = useState(false);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    api.savedJobs.list().then((ids) => setSavedIds(new Set(ids)));
-  }, []);
 
   const search = useCallback(
     async (q?: string) => {
@@ -70,17 +68,15 @@ export default function JobsPage() {
       setLoading(true);
       setSearched(true);
       try {
-        const nextJobs = await api.listJobs({
-          query: searchQuery,
-          location: location || undefined,
-          page_size: 30,
+        const params = new URLSearchParams({
+          q: searchQuery,
+          location,
+          sources: selectedSources.join(","),
+          limit: "30",
         });
-        const filteredJobs =
-          selectedSources.length > 0
-            ? nextJobs.filter((job) => selectedSources.includes(job.source))
-            : nextJobs;
-        setJobs(filteredJobs);
-        if (filteredJobs.length === 0)
+        const result = await api.get<{ jobs: JobPosting[] }>(`/jobs/search?${params}`);
+        setJobs(result.jobs || []);
+        if (result.jobs.length === 0)
           toast("Không tìm thấy việc làm phù hợp", { icon: "🔍" });
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : "Có lỗi khi tìm kiếm";
@@ -92,6 +88,25 @@ export default function JobsPage() {
     [query, location, selectedSources]
   );
 
+  async function crawlNow() {
+    if (crawling) return;
+    setCrawling(true);
+    const t = toast.loading("Đang cập nhật dữ liệu việc làm... (có thể mất 30–60s)");
+    try {
+      const res = await api.post<{ total: number }>("/jobs/crawl", {
+        q: query.trim() || undefined,
+        sources: selectedSources.length ? selectedSources : undefined,
+        location: location.trim() || undefined,
+      });
+      toast.success(`Đã cập nhật ${res.total ?? 0} việc làm vào hệ thống`, { id: t });
+      if (query.trim()) await search();
+    } catch {
+      toast.error("Cập nhật dữ liệu thất bại", { id: t });
+    } finally {
+      setCrawling(false);
+    }
+  }
+
   function toggleSource(id: string) {
     setSelectedSources((prev) =>
       prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
@@ -101,16 +116,15 @@ export default function JobsPage() {
   async function saveJob(job: JobPosting) {
     if (savedIds.has(job.id)) return;
     try {
-      await api.tracker.add({
+      await api.post("/applications/", {
         job_posting_id: job.id,
         company_name: job.company,
         role_title: job.title,
         source_url: job.url,
         status: "bookmarked",
       });
-      await api.savedJobs.add(job.id);
       setSavedIds((prev) => new Set(prev).add(job.id));
-      toast.success("Đã lưu vào danh sách cục bộ");
+      toast.success("Đã lưu việc làm");
     } catch {
       toast.error("Không thể lưu việc làm");
     }
@@ -156,6 +170,15 @@ export default function JobsPage() {
           className="bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white px-8 py-3 rounded-xl font-semibold text-sm transition-colors cursor-pointer"
         >
           {loading ? "Đang tìm..." : "Tìm kiếm"}
+        </button>
+        <button
+          onClick={crawlNow}
+          disabled={crawling}
+          title="Crawl dữ liệu mới nhất từ các nguồn rồi lưu vào hệ thống"
+          className="flex items-center justify-center gap-2 border border-slate-200 bg-white hover:border-slate-400 disabled:opacity-60 text-slate-700 px-5 py-3 rounded-xl font-semibold text-sm transition-colors cursor-pointer"
+        >
+          <RefreshCw className={`w-4 h-4 ${crawling ? "animate-spin" : ""}`} />
+          {crawling ? "Đang cập nhật..." : "Cập nhật dữ liệu"}
         </button>
       </div>
 
@@ -290,7 +313,7 @@ export default function JobsPage() {
                       <button
                         onClick={() => saveJob(job)}
                         disabled={saved}
-                        title={saved ? "Đã lưu cục bộ" : "Lưu việc làm cục bộ"}
+                        title={saved ? "Đã lưu" : "Lưu việc làm"}
                         className={`w-9 h-9 flex items-center justify-center rounded-xl border transition-colors cursor-pointer ${
                           saved
                             ? "border-slate-900 bg-slate-900 text-white"
@@ -299,25 +322,15 @@ export default function JobsPage() {
                       >
                         <Bookmark className={`w-4 h-4 ${saved ? "fill-white" : ""}`} />
                       </button>
-                      {canApplyToJob(job) ? (
-                        <a
-                          href={job.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="Ứng tuyển trên trang gốc"
-                          className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:border-slate-400 hover:text-slate-900 transition-colors"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                      ) : (
-                        <button
-                          disabled
-                          title="Liên kết ứng tuyển chưa khả dụng"
-                          className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-300 cursor-not-allowed"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </button>
-                      )}
+                      <a
+                        href={job.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Ứng tuyển trên trang gốc"
+                        className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:border-slate-400 hover:text-slate-900 transition-colors"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
                       <Link
                         href={`/jobs/${job.id}`}
                         className="hidden sm:inline-flex items-center px-4 h-9 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors"

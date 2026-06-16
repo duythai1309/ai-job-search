@@ -2,6 +2,12 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
+  // Mock mode: skip all auth gating so the whole UI is browsable with
+  // sample data, no backend or Supabase login required.
+  if (process.env.NEXT_PUBLIC_USE_MOCK === "1") {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   try {

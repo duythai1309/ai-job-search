@@ -4,7 +4,7 @@ import { api } from "@/lib/api";
 import { Application, STATUS_LABELS } from "@/lib/types";
 import toast from "react-hot-toast";
 import clsx from "clsx";
-import { ClipboardList, LayoutGrid, List, ExternalLink, Trash2 } from "lucide-react";
+import { ClipboardList, LayoutGrid, List, ExternalLink, Trash2, GripVertical } from "lucide-react";
 
 const STATUSES = ["bookmarked", "applied", "interview", "offer", "rejected", "withdrawn"] as const;
 
@@ -46,18 +46,40 @@ function CompanyInitials({ name }: { name: string }) {
 function KanbanColumn({
   status,
   apps,
+  draggingId,
+  onStartDrag,
+  onEndDrag,
+  onMoveCard,
   onStatusChange,
   onDelete,
 }: {
   status: string;
   apps: Application[];
+  draggingId: string | null;
+  onStartDrag: (id: string) => void;
+  onEndDrag: () => void;
+  onMoveCard: (id: string, status: string) => void;
   onStatusChange: (id: string, status: string) => void;
   onDelete: (id: string) => void;
 }) {
   const label = STATUS_LABELS[status] || status;
+  const [isOver, setIsOver] = useState(false);
+  const dragging = draggingId != null;
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsOver(false);
+    const id = e.dataTransfer.getData("text/plain");
+    if (id) onMoveCard(id, status);
+  }
 
   return (
-    <div className="min-w-[230px] flex-1 flex flex-col">
+    <div
+      className="min-w-[230px] flex-1 flex flex-col"
+      onDragOver={(e) => { if (dragging) { e.preventDefault(); setIsOver(true); } }}
+      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsOver(false); }}
+      onDrop={handleDrop}
+    >
       {/* Column header */}
       <div className="flex items-center gap-2 px-1 pb-3 border-b border-slate-200 mb-3">
         <span className={clsx("w-2 h-2 rounded-full shrink-0", STATUS_DOT[status])} />
@@ -65,12 +87,27 @@ function KanbanColumn({
         <span className="text-xs text-slate-400 tabular-nums">{apps.length}</span>
       </div>
 
-      {/* Cards */}
-      <div className="space-y-2.5 flex-1">
+      {/* Cards / drop zone */}
+      <div
+        className={clsx(
+          "space-y-2.5 flex-1 rounded-xl transition-colors p-1 -m-1",
+          isOver && "bg-slate-100 ring-2 ring-slate-300 ring-inset"
+        )}
+      >
         {apps.map((app) => (
           <div
             key={app.id}
-            className="bg-white rounded-xl border border-slate-200 p-3.5 hover:border-slate-300 transition-colors"
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData("text/plain", app.id);
+              e.dataTransfer.effectAllowed = "move";
+              onStartDrag(app.id);
+            }}
+            onDragEnd={onEndDrag}
+            className={clsx(
+              "group bg-white rounded-xl border border-slate-200 p-3.5 transition-all cursor-grab active:cursor-grabbing",
+              draggingId === app.id ? "opacity-40 border-slate-400 shadow-sm" : "hover:border-slate-300 hover:shadow-sm"
+            )}
           >
             <div className="flex items-start gap-2.5 mb-1">
               <CompanyInitials name={app.company_name || app.job_postings?.company || "?"} />
@@ -82,6 +119,7 @@ function KanbanColumn({
                   {app.company_name || app.job_postings?.company || "—"}
                 </p>
               </div>
+              <GripVertical className="w-3.5 h-3.5 text-slate-300 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
 
             {app.fit_score != null && <ScoreBar score={app.fit_score} />}
@@ -96,6 +134,8 @@ function KanbanColumn({
               <select
                 value={app.status}
                 onChange={(e) => onStatusChange(app.id, e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                draggable={false}
                 className="flex-1 text-[11px] border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-slate-400 cursor-pointer bg-white text-slate-700"
               >
                 {STATUSES.map((s) => (
@@ -107,6 +147,7 @@ function KanbanColumn({
                   href={app.source_url}
                   target="_blank"
                   rel="noopener noreferrer"
+                  draggable={false}
                   className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:text-slate-900 hover:border-slate-400 transition-colors"
                 >
                   <ExternalLink className="w-3 h-3" />
@@ -123,8 +164,13 @@ function KanbanColumn({
         ))}
 
         {apps.length === 0 && (
-          <div className="py-8 text-center text-slate-300 text-xs border border-dashed border-slate-200 rounded-xl">
-            Trống
+          <div
+            className={clsx(
+              "py-8 text-center text-xs border border-dashed rounded-xl transition-colors",
+              isOver ? "border-slate-400 text-slate-500" : "border-slate-200 text-slate-300"
+            )}
+          >
+            {dragging ? "Thả vào đây" : "Trống"}
           </div>
         )}
       </div>
@@ -136,10 +182,11 @@ export default function ApplicationsPage() {
   const [apps, setApps] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"kanban" | "table">("kanban");
+  const [draggingId, setDraggingId] = useState<string | null>(null);
 
   async function load() {
     try {
-      const data = await api.tracker.list<Application>();
+      const data = await api.get<Application[]>("/applications/");
       setApps(data);
     } catch {
       toast.error("Không tải được danh sách ứng tuyển");
@@ -152,21 +199,28 @@ export default function ApplicationsPage() {
 
   async function updateStatus(id: string, status: string) {
     try {
-      await api.tracker.update<Application>(id, { status: status as Application["status"] });
+      await api.patch(`/applications/${id}`, { status });
       setApps((prev) =>
         prev.map((a) => (a.id === id ? { ...a, status: status as Application["status"] } : a))
       );
-      toast.success("Đã cập nhật danh sách cục bộ");
+      toast.success("Đã cập nhật");
     } catch {
       toast.error("Không cập nhật được");
     }
   }
 
+  function moveCard(id: string, status: string) {
+    setDraggingId(null);
+    const app = apps.find((a) => a.id === id);
+    if (!app || app.status === status) return;
+    updateStatus(id, status);
+  }
+
   async function deleteApp(id: string) {
     if (!confirm("Xóa đơn ứng tuyển này?")) return;
-    await api.tracker.delete<Application>(id);
+    await api.delete(`/applications/${id}`);
     setApps((prev) => prev.filter((a) => a.id !== id));
-    toast.success("Đã xóa khỏi danh sách cục bộ");
+    toast.success("Đã xóa");
   }
 
   const byStatus = STATUSES.reduce((acc, s) => {
@@ -182,9 +236,6 @@ export default function ApplicationsPage() {
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Ứng tuyển</h1>
           <p className="text-slate-400 mt-1.5 text-sm">
             {apps.length > 0 ? `${apps.length} đơn đang theo dõi` : "Quản lý toàn bộ hành trình ứng tuyển"}
-          </p>
-          <p className="text-slate-300 mt-1 text-xs">
-            Dữ liệu này chỉ lưu trên trình duyệt hiện tại.
           </p>
         </div>
         <div className="flex items-center gap-1 border border-slate-200 p-1 rounded-xl bg-white">
@@ -235,6 +286,10 @@ export default function ApplicationsPage() {
               key={s}
               status={s}
               apps={byStatus[s]}
+              draggingId={draggingId}
+              onStartDrag={setDraggingId}
+              onEndDrag={() => setDraggingId(null)}
+              onMoveCard={moveCard}
               onStatusChange={updateStatus}
               onDelete={deleteApp}
             />

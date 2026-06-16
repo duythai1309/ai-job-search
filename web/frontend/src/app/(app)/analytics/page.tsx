@@ -5,7 +5,6 @@ import {
   PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { api } from "@/lib/api";
-import { JobPosting } from "@/lib/types";
 import toast from "react-hot-toast";
 import {
   TrendingUp, Building2, DollarSign, MapPin,
@@ -16,47 +15,16 @@ const CHART_COLORS = ["#0f172a", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#e
 
 interface MarketData {
   top_skills: { skill: string; count: number }[];
-  top_sources: { source: string; count: number }[];
+  top_sectors: { sector: string; count: number }[];
   salary_ranges: { range: string; count: number }[];
   employment_types: { type: string; count: number }[];
   top_locations: { location: string; count: number }[];
   insights: string[];
-  contains_seeded_data: boolean;
 }
 
 interface JobSummary {
   total_jobs: number;
   by_source: Record<string, number>;
-}
-
-function countBy(values: string[]) {
-  return Object.entries(
-    values.filter(Boolean).reduce<Record<string, number>>((counts, value) => {
-      counts[value] = (counts[value] || 0) + 1;
-      return counts;
-    }, {})
-  ).sort((a, b) => b[1] - a[1]);
-}
-
-function buildMarketData(jobs: JobPosting[]): MarketData {
-  return {
-    top_skills: countBy(jobs.flatMap((job) => job.skills_required || []))
-      .slice(0, 8)
-      .map(([skill, count]) => ({ skill, count })),
-    top_sources: countBy(jobs.map((job) => job.source))
-      .slice(0, 6)
-      .map(([source, count]) => ({ source, count })),
-    salary_ranges: [],
-    employment_types: countBy(jobs.map((job) => job.employment_type || "Khác"))
-      .map(([type, count]) => ({ type, count })),
-    top_locations: countBy(jobs.map((job) => job.location || "Việt Nam"))
-      .slice(0, 6)
-      .map(([location, count]) => ({ location, count })),
-    insights: jobs.length
-      ? [`Phân tích dựa trên ${jobs.length} việc làm hiện có trong hệ thống.`]
-      : [],
-    contains_seeded_data: jobs.some((job) => job.is_seeded),
-  };
 }
 
 function SectionCard({ title, icon: Icon, children }: {
@@ -84,12 +52,15 @@ export default function AnalyticsPage() {
   useEffect(() => {
     async function load() {
       try {
-        const jobs = await api.listJobs({ page_size: 100 });
-        setSummary({
-          total_jobs: jobs.length,
-          by_source: Object.fromEntries(countBy(jobs.map((job) => job.source))),
-        });
-        setMarket(jobs.length ? buildMarketData(jobs) : null);
+        const [cached, sum] = await Promise.all([
+          api.get<{ data?: MarketData }[]>("/analytics/market").catch(() => []),
+          api
+            .get<JobSummary>("/analytics/jobs/summary")
+            .catch(() => ({ total_jobs: 0, by_source: {} })),
+        ]);
+        setSummary(sum);
+        const latestData = (cached as { data?: MarketData }[]).find((c) => c.data?.top_skills);
+        if (latestData?.data) setMarket(latestData.data as MarketData);
       } finally {
         setLoading(false);
       }
@@ -100,12 +71,8 @@ export default function AnalyticsPage() {
   async function refresh() {
     setRefreshing(true);
     try {
-      const jobs = await api.listJobs({ page_size: 100 });
-      setSummary({
-        total_jobs: jobs.length,
-        by_source: Object.fromEntries(countBy(jobs.map((job) => job.source))),
-      });
-      setMarket(jobs.length ? buildMarketData(jobs) : null);
+      const result = await api.post<MarketData>("/analytics/market/refresh");
+      setMarket(result);
       toast.success("Đã cập nhật dữ liệu thị trường");
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Không thể phân tích — cần có dữ liệu việc làm";
@@ -115,13 +82,17 @@ export default function AnalyticsPage() {
     }
   }
 
+  const sourceData = summary
+    ? Object.entries(summary.by_source).map(([name, value]) => ({ name, value }))
+    : [];
+
   return (
     <div className="px-8 lg:px-12 py-10 max-w-screen-2xl">
       {/* Header */}
       <div className="flex items-end justify-between mb-10">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Thị trường</h1>
-          <p className="text-slate-400 mt-1.5 text-sm">Phân tích dựa trên số lượng việc làm hiện có</p>
+          <p className="text-slate-400 mt-1.5 text-sm">Xu hướng tuyển dụng Việt Nam theo thời gian thực</p>
         </div>
         <button
           onClick={refresh}
@@ -176,9 +147,6 @@ export default function AnalyticsPage() {
         </div>
       ) : (
         <div className="space-y-5">
-          {market.contains_seeded_data && (
-            <p className="text-xs text-slate-400">Dữ liệu mẫu được gắn nhãn và có thể xuất hiện trong phân tích.</p>
-          )}
           {/* Insights banner */}
           {market.insights && market.insights.length > 0 && (
             <div className="bg-slate-900 rounded-2xl p-6 text-white">
@@ -214,19 +182,19 @@ export default function AnalyticsPage() {
               </SectionCard>
             )}
 
-            {market.top_sources?.length > 0 && (
-              <SectionCard title="Nguồn dữ liệu việc làm" icon={Building2}>
+            {market.top_sectors?.length > 0 && (
+              <SectionCard title="Ngành tuyển dụng nhiều nhất" icon={Building2}>
                 <ResponsiveContainer width="100%" height={240}>
                   <PieChart>
                     <Pie
-                      data={market.top_sources.slice(0, 6)}
+                      data={market.top_sectors.slice(0, 6)}
                       dataKey="count"
-                      nameKey="source"
+                      nameKey="sector"
                       cx="50%" cy="50%"
                       outerRadius={88}
                       paddingAngle={3}
                     >
-                      {market.top_sources.slice(0, 6).map((_, i) => (
+                      {market.top_sectors.slice(0, 6).map((_, i) => (
                         <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                       ))}
                     </Pie>

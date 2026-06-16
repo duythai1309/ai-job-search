@@ -1,34 +1,13 @@
 import { createClient } from "./supabase";
-import {
-  CVAnalysisPayload,
-  FitScoreResult,
-  RecommendationResult,
-  extractErrorMessage,
-  normalizeJob,
-  normalizeJobList,
-  validateCvAnalysis,
-  validateFitScore,
-  validateRecommendations,
-} from "./contracts";
-import { JobPosting } from "./types";
-import { buildStorageKey, ScopedStorageResource } from "./storage";
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
-
-type ApiErrorShape = {
-  code?: string;
-  message?: string;
-  request_id?: string;
-  details?: unknown;
-  detail?: string;
-};
-
-type ApiEnvelope<T> = {
-  data?: T;
-  meta?: unknown;
-  error?: ApiErrorShape;
-};
+/** A single editable line/bullet of the CV with optional AI weakness flag. */
+export interface CVReviewItem {
+  id: string;
+  text: string;
+  weak?: boolean;
+  issue?: string;       // why it's weak
+  suggestion?: string;  // improved rewrite the user can apply
+}
 
 export interface CVSection {
   id: string;
@@ -37,294 +16,159 @@ export interface CVSection {
   score: number;
   issues: string[];
   suggestions: string[];
+  subtitle?: string;          // e.g. "Product Manager · Tiki · 2023–Present"
+  items?: CVReviewItem[];     // editable lines for the interactive review editor
 }
 
 export interface CVAnalysisResult {
   name: string;
+  headline?: string;          // role title under the name
+  contacts?: string[];        // email / location / links
   overall_score: number;
   summary_message: string;
   top_priorities: string[];
   sections: CVSection[];
 }
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+
+/**
+ * Mock mode — render the whole UI with sample data, no backend needed.
+ * Enable via NEXT_PUBLIC_USE_MOCK=1, or visit any page with ?mock=1
+ * (persists in localStorage; ?mock=0 disables), or run
+ * localStorage.setItem("vica:mock","1") in the console.
+ */
+function mockEnabled(): boolean {
+  if (process.env.NEXT_PUBLIC_USE_MOCK === "1") return true;
+  if (typeof window === "undefined") return false;
+  try {
+    const flag = new URLSearchParams(window.location.search).get("mock");
+    if (flag === "1") window.localStorage.setItem("vica:mock", "1");
+    if (flag === "0") window.localStorage.removeItem("vica:mock");
+    return window.localStorage.getItem("vica:mock") === "1";
+  } catch {
+    return false;
+  }
+}
+
+const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function getAuthHeader(): Promise<Record<string, string>> {
   try {
     const supabase = createClient();
     const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  } catch {
+    const token = data?.session?.access_token;
+    if (token) return { Authorization: `Bearer ${token}` };
+
+    // Fallback: refreshSession forces the client to rehydrate from cookies/storage
+    const { data: refreshed } = await supabase.auth.refreshSession();
+    const refreshedToken = refreshed?.session?.access_token;
+    return refreshedToken ? { Authorization: `Bearer ${refreshedToken}` } : {};
+  } catch (error) {
+    console.warn("[v0] Auth header error:", error instanceof Error ? error.message : String(error));
     return {};
   }
 }
 
-function buildUrl(path: string, query?: Record<string, string | number | undefined>) {
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  const url = new URL(`${BASE_URL}${normalizedPath}`);
-  Object.entries(query ?? {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== "") {
-      url.searchParams.set(key, String(value));
-    }
-  });
-  return url;
-}
-
-async function parseResponse<T>(response: Response): Promise<T> {
-  const contentType = response.headers.get("content-type") ?? "";
-  const hasJson = contentType.includes("application/json");
-  const payload = hasJson
-    ? await response.json().catch(() => null)
-    : await response.text().catch(() => "");
-
-  if (!response.ok) {
-    const fallback = `${response.status} ${response.statusText}`.trim();
-    throw new Error(extractErrorMessage(payload, fallback));
+async function request<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
+  if (mockEnabled()) {
+    const { resolveMock } = await import("./mock-data");
+    const body = typeof options.body === "string" ? JSON.parse(options.body) : undefined;
+    await delay(220);
+    return resolveMock(options.method || "GET", path, body) as T;
   }
 
-  if (payload && typeof payload === "object" && "error" in payload && (payload as ApiEnvelope<T>).error) {
-    throw new Error(extractErrorMessage((payload as ApiEnvelope<T>).error, "Request failed"));
-  }
-
-  if (payload && typeof payload === "object" && "data" in payload) {
-    return (payload as ApiEnvelope<T>).data as T;
-  }
-
-  return payload as T;
-}
-
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const headers = await getAuthHeaders();
-  const response = await fetch(buildUrl(path).toString(), {
+  const authHeader = await getAuthHeader();
+  const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
     headers: {
-      ...headers,
-      ...(options.headers as Record<string, string> | undefined),
+      "Content-Type": "application/json",
+      ...authHeader,
+      ...(options.headers as Record<string, string> || {}),
     },
   });
-  return parseResponse<T>(response);
-}
-
-async function requestJson<T>(
-  path: string,
-  options: RequestInit & { query?: Record<string, string | number | undefined> } = {}
-): Promise<T> {
-  const { query, body, headers, ...rest } = options;
-  const authHeaders = await getAuthHeaders();
-  const jsonHeaders: Record<string, string> =
-    body && !(body instanceof FormData) ? { "Content-Type": "application/json" } : {};
-  const response = await fetch(buildUrl(path, query).toString(), {
-    ...rest,
-    body,
-    headers: {
-      ...authHeaders,
-      ...jsonHeaders,
-      ...(headers as Record<string, string> | undefined),
-    },
-  });
-  return parseResponse<T>(response);
-}
-
-async function getStorageUserKey(): Promise<string> {
-  try {
-    const { data } = await createClient().auth.getSession();
-    return data.session?.user.id || "demo-user";
-  } catch {
-    return "demo-user";
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(error.detail || "Có lỗi xảy ra");
   }
-}
-
-async function scopedKey(resource: ScopedStorageResource): Promise<string> {
-  return buildStorageKey(await getStorageUserKey(), resource);
-}
-
-function readLocalJson<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const value = window.localStorage.getItem(key);
-    return value ? (JSON.parse(value) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function writeLocalJson<T>(key: string, value: T): void {
-  if (typeof window !== "undefined") {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  }
-}
-
-async function rememberCvId(cvId: string): Promise<void> {
-  const idsKey = await scopedKey("cvIds");
-  const lastCvIdKey = await scopedKey("lastCvId");
-  const ids = readLocalJson<string[]>(idsKey, []);
-  writeLocalJson(idsKey, [cvId, ...ids.filter((id) => id !== cvId)]);
-  if (typeof window !== "undefined") {
-    window.localStorage.setItem(lastCvIdKey, cvId);
-  }
+  return res.json();
 }
 
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>
-    requestJson<T>(path, {
-      method: "POST",
-      body: body instanceof FormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
-    }),
+    request<T>(path, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
   patch: <T>(path: string, body?: unknown) =>
-    requestJson<T>(path, {
-      method: "PATCH",
-      body: body instanceof FormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
-    }),
+    request<T>(path, { method: "PATCH", body: body ? JSON.stringify(body) : undefined }),
   put: <T>(path: string, body?: unknown) =>
-    requestJson<T>(path, {
-      method: "PUT",
-      body: body instanceof FormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
-    }),
-  delete: <T>(path: string) => requestJson<T>(path, { method: "DELETE" }),
+    request<T>(path, { method: "PUT", body: body ? JSON.stringify(body) : undefined }),
+  delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 
-  health: async () => requestJson<{ status: string }>("/health"),
+  async streamChat(body: {
+    session_id?: string;
+    message: string;
+    context_type?: string;
+    context_id?: string;
+  }): Promise<{ reader: ReadableStreamDefaultReader<Uint8Array>; sessionId: string }> {
+    if (mockEnabled()) {
+      const { mockStreamReply } = await import("./mock-data");
+      return { reader: mockStreamReply(body.message, body.context_type), sessionId: body.session_id || `mock-${Date.now()}` };
+    }
+    const authHeader = await getAuthHeader();
+    const res = await fetch(`${BASE_URL}/chat/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeader },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error("Chat error");
+    const sessionId = res.headers.get("X-Session-Id") || "";
+    return { reader: res.body!.getReader(), sessionId };
+  },
 
-  uploadCvRecord: async <T = unknown>(file: File) => {
+  async uploadCv(file: File): Promise<CVAnalysisResult> {
+    if (mockEnabled()) {
+      const { mockCvAnalysis } = await import("./mock-data");
+      await delay(1200);
+      return mockCvAnalysis;
+    }
+    const authHeader = await getAuthHeader();
     const formData = new FormData();
     formData.append("file", file);
-    const record = await requestJson<T>("/cvs", {
+    const res = await fetch(`${BASE_URL}/onboarding/parse-cv`, {
       method: "POST",
+      headers: authHeader,
       body: formData,
     });
-    const cvId = (record as { id?: string })?.id;
-    if (cvId) await rememberCvId(cvId);
-    return record;
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(error.detail || "Lỗi phân tích CV");
+    }
+    return res.json();
   },
 
-  uploadCv: async (file: File): Promise<CVAnalysisResult> => {
-    const record = await api.uploadCvRecord<{ id: string; filename?: string; summary?: string }>(file);
-    const analysis = await api.analyzeCv(record.id);
-    return {
-      name: analysis.name || record.filename || file.name,
-      overall_score: analysis.overall_score ?? 0,
-      summary_message: analysis.summary_message || record.summary || "CV đã được tải lên và phân tích.",
-      top_priorities: analysis.top_priorities || [],
-      sections: analysis.sections.map((section, index) => ({
-        id: section.id || `section-${index}`,
-        title: section.title || `Mục ${index + 1}`,
-        content_preview: section.content_preview || "",
-        score: section.score ?? 0,
-        issues: section.issues,
-        suggestions: section.suggestions,
-      })),
-    };
+  async downloadPdf(cvId: string): Promise<void> {
+    if (mockEnabled()) {
+      const blob = new Blob([`Mock CV PDF (${cvId})`], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `cv-${cvId}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
+    const authHeader = await getAuthHeader();
+    const res = await fetch(`${BASE_URL}/cv/${cvId}/pdf`, { headers: authHeader });
+    if (!res.ok) throw new Error("PDF error");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `cv-${cvId}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
   },
-
-  getCv: async <T = unknown>(cvId: string) => requestJson<T>(`/cvs/${cvId}`),
-
-  deleteCv: async (cvId: string) => {
-    await requestJson<void>(`/cvs/${cvId}`, { method: "DELETE" });
-    const idsKey = await scopedKey("cvIds");
-    const ids = readLocalJson<string[]>(idsKey, []).filter((id) => id !== cvId);
-    writeLocalJson(idsKey, ids);
-  },
-
-  listCvs: async <T = unknown>() => {
-    const ids = readLocalJson<string[]>(await scopedKey("cvIds"), []);
-    const records = await Promise.all(
-      ids.map((id) => requestJson<T>(`/cvs/${id}`).catch(() => null))
-    );
-    return records.filter((record) => record !== null) as T[];
-  },
-
-  analyzeCv: async (cvId: string): Promise<CVAnalysisPayload> =>
-    validateCvAnalysis(await requestJson<unknown>("/cv-analyses", {
-      method: "POST",
-      body: JSON.stringify({ cv_id: cvId }),
-    })),
-
-  listJobs: async (query?: {
-    query?: string;
-    location?: string;
-    level?: string;
-    page?: number;
-    page_size?: number;
-  }): Promise<JobPosting[]> =>
-    normalizeJobList(await requestJson<unknown>("/jobs", {
-      query: {
-        query: query?.query,
-        location: query?.location,
-        level: query?.level,
-        page: query?.page,
-        page_size: query?.page_size,
-      },
-    })),
-
-  getJob: async (jobId: string): Promise<JobPosting> =>
-    normalizeJob(await requestJson<unknown>(`/jobs/${jobId}`)),
-
-  fitScore: async (cvId: string, jobId: string): Promise<FitScoreResult> =>
-    validateFitScore(await requestJson<unknown>("/fit-scores", {
-      method: "POST",
-      body: JSON.stringify({ cv_id: cvId, job_id: jobId }),
-    })),
-
-  recommendations: async (cvId: string, jobId: string): Promise<RecommendationResult> =>
-    validateRecommendations(await requestJson<unknown>("/recommendations", {
-      method: "POST",
-      body: JSON.stringify({ cv_id: cvId, job_id: jobId }),
-    })),
-
-  getLastCvId: async () => {
-    if (typeof window === "undefined") return null;
-    return window.localStorage.getItem(await scopedKey("lastCvId"));
-  },
-
-  tracker: {
-    list: async <T = unknown>() =>
-      readLocalJson<T[]>(await scopedKey("applications"), []),
-    add: async <T extends object>(application: T & { id?: string }) => {
-      const key = await scopedKey("applications");
-      const stored = readLocalJson<T[]>(key, []);
-      const next = {
-        ...application,
-        id: application.id || crypto.randomUUID(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      writeLocalJson(key, [next, ...stored]);
-      return next;
-    },
-    update: async <T extends { id: string }>(id: string, patch: Partial<T>) => {
-      const key = await scopedKey("applications");
-      const stored = readLocalJson<T[]>(key, []);
-      const next = stored.map((item) =>
-        item.id === id ? { ...item, ...patch, updated_at: new Date().toISOString() } : item
-      );
-      writeLocalJson(key, next);
-    },
-    delete: async <T extends { id: string }>(id: string) => {
-      const key = await scopedKey("applications");
-      const stored = readLocalJson<T[]>(key, []);
-      writeLocalJson(key, stored.filter((item) => item.id !== id));
-    },
-  },
-
-  savedJobs: {
-    list: async () => readLocalJson<string[]>(await scopedKey("savedJobs"), []),
-    add: async (jobId: string) => {
-      const key = await scopedKey("savedJobs");
-      const saved = readLocalJson<string[]>(key, []);
-      writeLocalJson(key, [jobId, ...saved.filter((id) => id !== jobId)]);
-    },
-  },
-
-  profile: {
-    get: async <T = unknown>() =>
-      readLocalJson<Partial<T>>(await scopedKey("profile"), {}),
-    save: async <T = unknown>(profile: Partial<T>) => {
-      writeLocalJson(await scopedKey("profile"), profile);
-      return profile;
-    },
-  },
-
-  downloadPdf: async (_cvId: string): Promise<void> => {
-    throw new Error("Backend MVP hiện chưa hỗ trợ xuất PDF.");
-  },
-
 };

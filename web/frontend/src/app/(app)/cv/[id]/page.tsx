@@ -3,60 +3,8 @@ import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { CV, CVSuggestion } from "@/lib/types";
-import { CVAnalysisPayload, RecommendationResult } from "@/lib/contracts";
 import toast from "react-hot-toast";
 import clsx from "clsx";
-
-type CvRecord = Partial<CV> & {
-  id: string;
-  filename?: string;
-  summary?: string;
-};
-
-type AnalysisResponse = CVAnalysisPayload | RecommendationResult;
-
-function normalizeCv(record: CvRecord): CV {
-  const now = new Date().toISOString();
-  return {
-    id: record.id,
-    user_id: record.user_id || "",
-    title: record.title || record.filename || "CV",
-    target_role: record.target_role,
-    target_company: record.target_company,
-    profile_statement: record.profile_statement || record.summary || "",
-    sections: record.sections || [],
-    html_content: record.html_content,
-    pdf_url: record.pdf_url,
-    is_master: record.is_master || false,
-    version: record.version || 1,
-    created_at: record.created_at || now,
-    updated_at: record.updated_at || now,
-  };
-}
-
-function toSuggestions(result: AnalysisResponse): CVSuggestion[] {
-  if (result.suggestions?.length) {
-    return result.suggestions.map((suggestion, index) => ({
-      id: `recommendation-${index}`,
-      section: suggestion.target_section,
-      suggestion_type: "reframe",
-      suggested_text: suggestion.action,
-      reason: suggestion.reason,
-      is_applied: false,
-    }));
-  }
-
-  return ("sections" in result ? result.sections : []).flatMap((section, sectionIndex) =>
-    (section.suggestions || []).map((suggestion, suggestionIndex) => ({
-      id: `${section.id || sectionIndex}-${suggestionIndex}`,
-      section: section.title,
-      suggestion_type: "reframe" as const,
-      suggested_text: suggestion,
-      reason: section.issues?.[suggestionIndex] || section.issues?.[0],
-      is_applied: false,
-    }))
-  );
-}
 
 const SUGGESTION_TYPE_LABELS: Record<string, string> = {
   weakness: "Điểm yếu",
@@ -91,10 +39,11 @@ export default function CVEditorPage() {
   useEffect(() => {
     async function load() {
       try {
-        const cvData = normalizeCv(await api.getCv<CvRecord>(id));
+        const cvData = await api.get<CV>(`/cv/${id}`);
         setCv(cvData);
         setPreviewHtml(cvData.html_content || "");
-        setSuggestions([]);
+        const sug = await api.get<CVSuggestion[]>(`/cv/${id}/suggestions`);
+        setSuggestions(sug);
       } catch {
         toast.error("Không tải được CV");
       } finally {
@@ -107,13 +56,11 @@ export default function CVEditorPage() {
   async function analyze() {
     setAnalyzing(true);
     try {
-      const result = jobId
-        ? await api.recommendations(id, jobId)
-        : await api.analyzeCv(id);
-      const nextSuggestions = toSuggestions(result);
-      setSuggestions(nextSuggestions);
+      const params = jobId ? `?job_posting_id=${jobId}` : "";
+      const result = await api.post<{ suggestions: CVSuggestion[] }>(`/cv/${id}/analyze${params}`);
+      setSuggestions(result.suggestions || []);
       setActiveTab("suggestions");
-      toast.success(`Tìm thấy ${nextSuggestions.length} gợi ý cải thiện`);
+      toast.success(`Tìm thấy ${result.suggestions.length} gợi ý cải thiện`);
     } catch (e: any) {
       toast.error(e.message || "Có lỗi khi phân tích");
     } finally {
@@ -125,10 +72,15 @@ export default function CVEditorPage() {
     if (selectedSuggestions.size === 0) return;
     setApplying(true);
     try {
+      await api.post(`/cv/${id}/suggestions/apply`, {
+        suggestion_ids: Array.from(selectedSuggestions),
+      });
       setSuggestions((prev) => prev.filter((s) => !selectedSuggestions.has(s.id)));
       setSelectedSuggestions(new Set());
-      toast.success("Đã ghi nhận trong phiên xem trước");
-      toast("Thay đổi này chưa được lưu lên server", { icon: "ℹ️" });
+      toast.success("Đã áp dụng các gợi ý");
+      const updated = await api.get<CV>(`/cv/${id}`);
+      setCv(updated);
+      setPreviewHtml(updated.html_content || "");
     } catch {
       toast.error("Không áp dụng được");
     } finally {
@@ -149,9 +101,13 @@ export default function CVEditorPage() {
     if (!cv) return;
     const updated = { ...cv, [field]: value };
     setCv(updated as CV);
-    if (field === "profile_statement" || field === "target_role") {
-      setPreviewHtml(updated.html_content || "");
-    }
+    try {
+      await api.patch(`/cv/${id}`, { [field]: value });
+      if (field === "profile_statement" || field === "target_role") {
+        const refreshed = await api.get<CV>(`/cv/${id}`);
+        setPreviewHtml(refreshed.html_content || "");
+      }
+    } catch { /* silent */ }
   }
 
   if (loadingCv) {
@@ -175,7 +131,7 @@ export default function CVEditorPage() {
             {analyzing ? "Đang phân tích..." : "🤖 Phân tích AI"}
           </button>
           <button
-            onClick={() => api.downloadPdf(id).catch((error) => toast.error(error.message))}
+            onClick={() => api.downloadPdf(id)}
             className="border border-gray-200 text-gray-600 hover:bg-gray-50 px-4 py-2 rounded-lg text-sm font-medium transition"
           >
             ⬇ Xuất PDF
@@ -207,12 +163,6 @@ export default function CVEditorPage() {
       <div className="flex-1 overflow-y-auto p-8">
         {activeTab === "editor" && (
           <div className="max-w-2xl space-y-6">
-            <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
-              <p className="text-amber-800 text-sm font-medium">Bản nháp xem trước cục bộ</p>
-              <p className="text-amber-700 text-xs mt-1">
-                Các chỉnh sửa bên dưới chưa được lưu lên server vì MVP chưa có API cập nhật CV.
-              </p>
-            </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">Tiêu đề CV</label>
               <input
@@ -294,7 +244,7 @@ export default function CVEditorPage() {
                         disabled={applying}
                         className="bg-brand-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium"
                       >
-                        {applying ? "Đang ghi nhận..." : `Ghi nhận (${selectedSuggestions.size})`}
+                        {applying ? "Đang áp dụng..." : `Áp dụng (${selectedSuggestions.size})`}
                       </button>
                     )}
                   </div>

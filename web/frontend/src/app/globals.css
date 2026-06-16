@@ -44,6 +44,36 @@ body {
   animation: page-in 0.35s ease-out both;
 }
 
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 32s linear infinite;
+}
+
+@keyframes aurora-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(48px, -36px) scale(1.12);
+  }
+  66% {
+    transform: translate(-36px, 28px) scale(0.94);
+  }
+}
+
+.animate-aurora {
+  animation: aurora-drift 16s ease-in-out infinite;
+}
+
 .prose-chat p {
   margin-bottom: 0.5em;
   line-height: 1.6;

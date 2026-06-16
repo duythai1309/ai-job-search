@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { CV } from "@/lib/types";
@@ -10,21 +10,24 @@ export default function CVListPage() {
   const [cvs, setCvs] = useState<CV[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    api.listCvs<CV>().then(setCvs).catch(() => {}).finally(() => setLoading(false));
+    api.get<CV[]>("/cv/").then(setCvs).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   async function createBlankCV() {
-    fileInputRef.current?.click();
-  }
-
-  async function uploadCv(file: File) {
     setCreating(true);
     try {
-      const record = await api.uploadCvRecord<CV & { filename?: string }>(file);
-      const cv = { ...record, title: record.title || record.filename || file.name };
+      const cv = await api.post<CV>("/cv/", {
+        title: "CV mới",
+        is_master: false,
+        sections: [
+          { id: "profile", type: "custom", title: "Mục tiêu nghề nghiệp", content: { text: "" }, sort_order: 0 },
+          { id: "exp", type: "experience", title: "Kinh nghiệm làm việc", content: [], sort_order: 1 },
+          { id: "edu", type: "education", title: "Học vấn", content: [], sort_order: 2 },
+          { id: "skills", type: "skills", title: "Kỹ năng", content: [], sort_order: 3 },
+        ],
+      });
       toast.success("Đã tạo CV mới");
       window.location.href = `/cv/${cv.id}`;
     } catch {
@@ -36,24 +39,13 @@ export default function CVListPage() {
 
   async function deleteCv(id: string) {
     if (!confirm("Xóa CV này?")) return;
-    await api.deleteCv(id);
+    await api.delete(`/cv/${id}`);
     setCvs((prev) => prev.filter((c) => c.id !== id));
     toast.success("Đã xóa CV");
   }
 
   return (
     <div className="px-8 lg:px-12 py-10 max-w-screen-2xl">
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".pdf,.doc,.docx,.txt"
-        className="hidden"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) void uploadCv(file);
-          event.currentTarget.value = "";
-        }}
-      />
       {/* Header */}
       <div className="flex items-end justify-between mb-10">
         <div>
@@ -134,7 +126,7 @@ export default function CVListPage() {
                   Chỉnh sửa
                 </Link>
                 <button
-                  onClick={() => api.downloadPdf(cv.id).catch((error) => toast.error(error.message))}
+                  onClick={() => api.downloadPdf(cv.id)}
                   className="w-9 flex items-center justify-center border border-slate-200 rounded-xl hover:border-slate-400 transition-colors text-slate-500 hover:text-slate-900 cursor-pointer"
                   title="Tải PDF"
                 >
