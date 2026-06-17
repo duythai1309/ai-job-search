@@ -5,7 +5,7 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { JobPosting, FitEvaluation, SOURCE_LABELS, formatSalary } from "@/lib/types";
 import toast from "react-hot-toast";
-import { ArrowLeft, MapPin, Sparkles, CheckCircle2, AlertCircle, Lightbulb, ExternalLink } from "lucide-react";
+import { ArrowLeft, MapPin, Sparkles, CheckCircle2, AlertCircle, Lightbulb, ExternalLink, FileText } from "lucide-react";
 
 function ScoreBar({ score, label }: { score: number; label: string }) {
   const color = score >= 75 ? "bg-emerald-500" : score >= 50 ? "bg-accent-500" : "bg-red-400";
@@ -55,7 +55,7 @@ export default function JobDetailPage() {
     if (!job) return;
     setSaving(true);
     try {
-      await api.post("/applications", { job_posting_id: job.id, company_name: job.company, role_title: job.title, source_url: job.url, status: "applied", fit_score: evaluation?.overall_score, fit_evaluation: evaluation });
+      await api.post("/applications/", { job_posting_id: job.id, company_name: job.company, role_title: job.title, source_url: job.url, status: "applied", fit_score: evaluation?.overall_score, fit_evaluation: evaluation });
       toast.success("Đã thêm vào danh sách ứng tuyển");
       router.push("/applications");
     } catch {
@@ -104,6 +104,9 @@ export default function JobDetailPage() {
           <button onClick={evaluate} disabled={loadingEval} className="inline-flex items-center gap-2 bg-primary-800 hover:bg-primary-900 disabled:opacity-60 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-150 cursor-pointer">
             <Sparkles className="w-4 h-4" /> {loadingEval ? "Đang phân tích..." : "Đánh giá độ phù hợp"}
           </button>
+          <Link href={`/jobs/${job.id}/tailor`} className="inline-flex items-center gap-2 border border-slate-200 text-slate-700 hover:bg-slate-50 px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-150 cursor-pointer">
+            <FileText className="w-4 h-4" /> Sửa CV cho vị trí này
+          </Link>
           <button onClick={apply} disabled={saving} className="border border-slate-200 text-slate-700 hover:bg-slate-50 px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-150 cursor-pointer">
             {saving ? "Đang lưu..." : "Lưu vào tracker"}
           </button>
@@ -150,8 +153,13 @@ export default function JobDetailPage() {
           </div>
 
           <div className="mt-4 pt-4 border-t border-slate-100 flex gap-4">
-            <Link href="/cv" className="text-sm text-primary-700 hover:text-primary-900 font-semibold font-body transition-colors">Tạo CV cho vị trí này →</Link>
-            <Link href={`/chat?context=job&id=${job.id}`} className="text-sm text-primary-700 hover:text-primary-900 font-semibold font-body transition-colors">Hỏi AI về chiến lược ứng tuyển →</Link>
+            <Link href={`/jobs/${job.id}/tailor`} className="text-sm text-primary-700 hover:text-primary-900 font-semibold font-body transition-colors">Tinh chỉnh CV cho vị trí này →</Link>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("vica:open-chat"))}
+              className="text-sm text-primary-700 hover:text-primary-900 font-semibold font-body transition-colors cursor-pointer"
+            >
+              Hỏi AI về chiến lược ứng tuyển →
+            </button>
           </div>
         </div>
       )}

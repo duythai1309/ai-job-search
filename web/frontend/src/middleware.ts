@@ -2,6 +2,12 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
+  // Mock mode: skip all auth gating so the whole UI is browsable with
+  // sample data, no backend or Supabase login required.
+  if (process.env.NEXT_PUBLIC_USE_MOCK === "1") {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   try {
@@ -45,24 +51,30 @@ export async function middleware(request: NextRequest) {
 
     const { pathname } = request.nextUrl;
 
-    // Public/auth pages that don't require authentication
-    const publicPaths = ["/", "/auth/login", "/auth/register"];
-    const isPublicPath = publicPaths.includes(pathname);
-    
-    // Protected pages that require authentication  
-    const isProtectedPath = !isPublicPath && pathname.startsWith("/(app)") || pathname.startsWith("/dashboard") || pathname.startsWith("/analytics") || pathname.startsWith("/applications") || pathname.startsWith("/chat");
+    // App pages (require auth + completed onboarding)
+    const APP_PREFIXES = ["/dashboard", "/analytics", "/applications", "/jobs", "/cv", "/profile"];
+    const isAppPath = APP_PREFIXES.some((p) => pathname.startsWith(p));
+    const isProtectedPath = isAppPath || pathname.startsWith("/onboarding");
+    const isAuthPage = ["/auth/login", "/auth/register", "/login", "/register"].includes(pathname);
 
-    // If user is not authenticated and trying to access protected page, redirect to login
+    // If not authenticated, redirect to login for all protected paths
     if (!authUser && isProtectedPath) {
       const url = request.nextUrl.clone();
       url.pathname = "/auth/login";
       return NextResponse.redirect(url);
     }
 
-    // If user is authenticated and trying to access auth pages, redirect to dashboard
-    if (authUser && (pathname === "/auth/login" || pathname === "/auth/register")) {
+    // If authenticated and on an auth page, redirect based on onboarding status
+    if (authUser && isAuthPage) {
       const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
+      url.pathname = authUser.user_metadata?.onboarding_completed ? "/dashboard" : "/onboarding";
+      return NextResponse.redirect(url);
+    }
+
+    // If authenticated but onboarding not done, block access to app pages
+    if (authUser && isAppPath && !authUser.user_metadata?.onboarding_completed) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/onboarding";
       return NextResponse.redirect(url);
     }
   } catch (error) {
