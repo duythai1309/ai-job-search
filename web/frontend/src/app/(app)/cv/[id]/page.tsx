@@ -117,42 +117,42 @@ export default function CVEditorPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="border-b border-gray-100 bg-white px-8 py-4 flex items-center justify-between">
+      <div className="border-b border-slate-200/70 bg-white px-8 py-5 flex items-center justify-between">
         <div>
-          <h1 className="font-bold text-gray-900">{cv.title}</h1>
-          {cv.target_role && <p className="text-sm text-gray-500">{cv.target_role}</p>}
+          <h1 className="text-lg font-semibold text-slate-900 tracking-tight">{cv.title}</h1>
+          {cv.target_role && <p className="text-sm text-slate-400 mt-0.5">{cv.target_role}</p>}
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2.5">
           <button
             onClick={analyze}
             disabled={analyzing}
-            className="bg-brand-500 hover:bg-brand-600 disabled:opacity-60 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+            className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
           >
-            {analyzing ? "Đang phân tích..." : "🤖 Phân tích AI"}
+            {analyzing ? "Đang phân tích…" : "Phân tích AI"}
           </button>
           <button
             onClick={() => api.downloadPdf(id)}
-            className="border border-gray-200 text-gray-600 hover:bg-gray-50 px-4 py-2 rounded-lg text-sm font-medium transition"
+            className="border border-slate-200 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
           >
-            ⬇ Xuất PDF
+            Xuất PDF
           </button>
         </div>
       </div>
 
-      <div className="flex border-b border-gray-100 bg-white px-8">
+      <div className="flex gap-1 border-b border-slate-200/70 bg-white px-8">
         {[
-          { id: "editor", label: "✏️ Chỉnh sửa" },
-          { id: "suggestions", label: `💡 Gợi ý${suggestions.length > 0 ? ` (${suggestions.length})` : ""}` },
-          { id: "preview", label: "👁 Xem trước" },
+          { id: "editor", label: "Chỉnh sửa" },
+          { id: "suggestions", label: `Gợi ý${suggestions.length > 0 ? ` (${suggestions.length})` : ""}` },
+          { id: "preview", label: "Xem trước" },
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as typeof activeTab)}
             className={clsx(
-              "px-5 py-3 text-sm font-medium border-b-2 transition",
+              "px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer",
               activeTab === tab.id
-                ? "border-brand-500 text-brand-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
+                ? "border-slate-900 text-slate-900"
+                : "border-transparent text-slate-400 hover:text-slate-700"
             )}
           >
             {tab.label}
@@ -200,12 +200,12 @@ export default function CVEditorPage() {
               />
             </div>
 
-            <div className="bg-blue-50 rounded-xl p-4">
-              <p className="text-blue-700 text-sm font-medium mb-1">💡 Gợi ý</p>
-              <p className="text-blue-600 text-sm">
+            <div className="border-l-2 border-slate-300 bg-slate-50 rounded-r-lg px-4 py-3">
+              <p className="text-slate-700 text-sm font-medium mb-0.5">Gợi ý</p>
+              <p className="text-slate-500 text-sm leading-relaxed">
                 Dữ liệu học vấn, kinh nghiệm và kỹ năng được lấy từ hồ sơ của bạn.
                 Hãy{" "}
-                <a href="/profile" className="underline">cập nhật hồ sơ</a>{" "}
+                <a href="/profile" className="underline hover:text-slate-900">cập nhật hồ sơ</a>{" "}
                 để CV phản ánh đúng thông tin nhất.
               </p>
             </div>
@@ -215,16 +215,15 @@ export default function CVEditorPage() {
         {activeTab === "suggestions" && (
           <div className="max-w-2xl">
             {suggestions.length === 0 ? (
-              <div className="text-center py-16 text-gray-400">
-                <div className="text-5xl mb-4">💡</div>
-                <h3 className="font-semibold text-gray-600 text-lg mb-2">Chưa có gợi ý nào</h3>
-                <p className="text-sm mb-4">Nhấn "Phân tích AI" để nhận gợi ý cải thiện CV</p>
+              <div className="text-center py-20">
+                <h3 className="font-semibold text-slate-700 text-base mb-1.5">Chưa có gợi ý nào</h3>
+                <p className="text-sm text-slate-400 mb-5">Nhấn "Phân tích AI" để nhận gợi ý cải thiện CV</p>
                 <button
                   onClick={analyze}
                   disabled={analyzing}
-                  className="bg-brand-500 text-white px-6 py-2.5 rounded-lg text-sm font-medium"
+                  className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
                 >
-                  {analyzing ? "Đang phân tích..." : "Phân tích ngay"}
+                  {analyzing ? "Đang phân tích…" : "Phân tích ngay"}
                 </button>
               </div>
             ) : (
@@ -284,7 +283,7 @@ export default function CVEditorPage() {
                       )}
                       {sug.suggested_text && (
                         <p className="text-sm font-medium mb-1.5 bg-white/60 rounded p-2">
-                          → {sug.suggested_text}
+                          {sug.suggested_text}
                         </p>
                       )}
                       {sug.reason && (
@@ -299,14 +298,18 @@ export default function CVEditorPage() {
         )}
 
         {activeTab === "preview" && (
-          <div className="max-w-3xl">
+          <div className="flex justify-center">
             {previewHtml ? (
-              <div
-                className="bg-white shadow-lg rounded-2xl overflow-hidden"
-                dangerouslySetInnerHTML={{ __html: previewHtml }}
+              // Render in an iframe so the document's own (Harvard) stylesheet is
+              // isolated — injecting it inline would leak its * / body rules into
+              // the whole app. This also previews the real printed page.
+              <iframe
+                title="Xem trước CV"
+                srcDoc={previewHtml}
+                className="w-full max-w-[820px] h-[1120px] bg-white border border-slate-200 rounded-lg shadow-sm"
               />
             ) : (
-              <div className="text-center py-16 text-gray-400">Chưa có nội dung để xem trước</div>
+              <div className="text-center py-20 text-slate-400">Chưa có nội dung để xem trước</div>
             )}
           </div>
         )}
