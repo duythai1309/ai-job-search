@@ -1,18 +1,71 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { api } from "@/lib/api";
+import { api, CVAnalysisResult } from "@/lib/api";
 import { CV } from "@/lib/types";
 import toast from "react-hot-toast";
+import CvReviewEditor, { EditedCvSection } from "@/components/ui/cv-review-editor";
 
 export default function CVListPage() {
   const [cvs, setCvs] = useState<CV[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [uploadState, setUploadState] = useState<"idle" | "analyzing" | "review">("idle");
+  const [analysis, setAnalysis] = useState<CVAnalysisResult | null>(null);
+  const [uploadFileName, setUploadFileName] = useState("");
+  const uploadInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     api.get<CV[]>("/cv/").then(setCvs).catch(() => {}).finally(() => setLoading(false));
   }, []);
+
+  // Build a CV by uploading a file — reuses the same upload → AI review → save
+  // flow as onboarding (the polished CvReviewEditor), instead of a separate UI.
+  async function handleUpload(file: File) {
+    const allowed = [".pdf", ".doc", ".docx", ".txt"];
+    const ext = "." + (file.name.split(".").pop() || "").toLowerCase();
+    if (!allowed.includes(ext)) {
+      toast.error("Chỉ hỗ trợ file PDF, DOC, DOCX hoặc TXT");
+      return;
+    }
+    setUploadFileName(file.name);
+    setUploadState("analyzing");
+    try {
+      const result = await api.uploadCv(file);
+      setAnalysis(result);
+      setUploadState("review");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Có lỗi khi phân tích CV");
+      setUploadState("idle");
+    }
+  }
+
+  async function saveUploadedCv(edited: EditedCvSection[]) {
+    const summary =
+      edited.find((s) => /mục tiêu|summary|tóm tắt|objective|profile/i.test(s.title))?.lines.join(" ") || "";
+    const sections = edited
+      .filter((s) => s.lines.length > 0)
+      .map((s, i) => ({
+        id: s.id,
+        type: "custom",
+        title: s.title,
+        content: { text: s.lines.join("\n") },
+        sort_order: i,
+      }));
+    try {
+      const cv = await api.post<CV>("/cv/", {
+        title: analysis?.name ? `CV — ${analysis.name}` : "CV của tôi",
+        target_role: analysis?.headline || undefined,
+        profile_statement: summary,
+        sections,
+        is_master: false,
+      });
+      toast.success("Đã tạo CV từ file tải lên");
+      window.location.href = `/cv/${cv.id}`;
+    } catch {
+      toast.error("Chưa lưu được CV");
+    }
+  }
 
   async function createBlankCV() {
     setCreating(true);
@@ -43,6 +96,32 @@ export default function CVListPage() {
     toast.success("Đã xóa CV");
   }
 
+  if (uploadState === "review" && analysis) {
+    return (
+      <CvReviewEditor
+        analysis={analysis}
+        fileName={uploadFileName}
+        finishLabel="Lưu CV"
+        onFinish={saveUploadedCv}
+        onReupload={() => {
+          setAnalysis(null);
+          setUploadFileName("");
+          setUploadState("idle");
+        }}
+      />
+    );
+  }
+
+  if (uploadState === "analyzing") {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
+        <div className="w-12 h-12 rounded-2xl bg-slate-900 animate-pulse" />
+        <p className="font-semibold text-slate-900">AI đang phân tích CV của bạn…</p>
+        <p className="text-sm text-slate-400">{uploadFileName} · thường mất 10–20 giây</p>
+      </div>
+    );
+  }
+
   return (
     <div className="px-8 lg:px-12 py-10 max-w-screen-2xl">
       {/* Header */}
@@ -51,14 +130,33 @@ export default function CVListPage() {
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">CV của tôi</h1>
           <p className="text-slate-400 mt-1.5 text-sm">Quản lý và tạo CV thông minh với AI</p>
         </div>
-        <button
-          onClick={createBlankCV}
-          disabled={creating}
-          className="bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors cursor-pointer"
-        >
-          {creating ? "Đang tạo…" : "Tạo CV mới"}
-        </button>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => uploadInputRef.current?.click()}
+            className="bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors cursor-pointer"
+          >
+            Tải CV lên
+          </button>
+          <button
+            onClick={createBlankCV}
+            disabled={creating}
+            className="border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-60 px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors cursor-pointer"
+          >
+            {creating ? "Đang tạo…" : "Tạo CV trống"}
+          </button>
+        </div>
       </div>
+      <input
+        ref={uploadInputRef}
+        type="file"
+        className="hidden"
+        accept=".pdf,.doc,.docx,.txt"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleUpload(f);
+          e.target.value = "";
+        }}
+      />
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -72,12 +170,20 @@ export default function CVListPage() {
           <p className="text-sm text-slate-400 mt-1 mb-6">
             Tạo CV đầu tiên của bạn và để AI giúp cải thiện
           </p>
-          <button
-            onClick={createBlankCV}
-            className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors cursor-pointer"
-          >
-            Tạo CV ngay
-          </button>
+          <div className="flex items-center justify-center gap-2.5">
+            <button
+              onClick={() => uploadInputRef.current?.click()}
+              className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors cursor-pointer"
+            >
+              Tải CV lên
+            </button>
+            <button
+              onClick={createBlankCV}
+              className="border border-slate-200 text-slate-700 hover:bg-slate-50 px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors cursor-pointer"
+            >
+              Tạo CV trống
+            </button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
