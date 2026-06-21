@@ -76,15 +76,18 @@ function KanbanColumn({
 
   return (
     <div
-      className="flex flex-col min-w-0"
+      className="w-60 shrink-0 flex flex-col"
       onDragOver={(e) => { if (dragging) { e.preventDefault(); setIsOver(true); } }}
       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsOver(false); }}
       onDrop={handleDrop}
     >
       {/* Column header */}
-      <div className="flex items-center gap-2 px-1 pb-3 border-b border-slate-200 mb-3">
+      <div className={clsx(
+        "flex items-center gap-2 px-1 pb-2 border-b mb-2",
+        apps.length > 0 ? "border-slate-200" : "border-slate-100"
+      )}>
         <span className={clsx("w-2 h-2 rounded-full shrink-0", STATUS_DOT[status])} />
-        <span className="text-xs font-semibold text-slate-700 flex-1">{label}</span>
+        <span className={clsx("text-xs font-semibold flex-1", apps.length > 0 ? "text-slate-700" : "text-slate-400")}>{label}</span>
         <span className="text-xs text-slate-400 tabular-nums">{apps.length}</span>
       </div>
 
@@ -166,19 +169,15 @@ function KanbanColumn({
           </div>
         ))}
 
-        {apps.length === 0 && (
-          dragging ? (
-            <div
-              className={clsx(
-                "py-8 text-center text-xs border border-dashed rounded-xl transition-colors",
-                isOver ? "border-blue-400 text-blue-500" : "border-slate-200 text-slate-400"
-              )}
-            >
-              Thả vào đây
-            </div>
-          ) : (
-            <div className="py-1.5 text-center text-[11px] text-slate-300 select-none">—</div>
-          )
+        {apps.length === 0 && dragging && (
+          <div
+            className={clsx(
+              "py-8 text-center text-xs border border-dashed rounded-xl transition-colors",
+              isOver ? "border-blue-400 text-blue-500" : "border-slate-200 text-slate-400"
+            )}
+          >
+            Thả vào đây
+          </div>
         )}
       </div>
     </div>
@@ -269,9 +268,9 @@ export default function ApplicationsPage() {
 
       {/* Loading */}
       {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+        <div className="flex flex-wrap gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="space-y-3 animate-pulse">
+            <div key={i} className="w-60 shrink-0 space-y-3 animate-pulse">
               <div className="h-4 bg-slate-100 rounded w-2/3" />
               <div className="h-28 bg-slate-100 rounded-xl" />
               <div className="h-28 bg-slate-100 rounded-xl" />
@@ -295,7 +294,7 @@ export default function ApplicationsPage() {
           </a>
         </div>
       ) : view === "kanban" ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 pb-2 items-start">
+        <div className="flex flex-wrap items-start gap-4 pb-2">
           {STATUSES.map((s) => (
             <KanbanColumn
               key={s}
