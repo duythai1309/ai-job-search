@@ -22,6 +22,29 @@ const SUGGESTION_TYPE_COLORS: Record<string, string> = {
   remove: "bg-gray-50 border-gray-200 text-gray-600",
 };
 
+/**
+ * Replace the first occurrence of `from` with `to` anywhere inside a CV section
+ * tree (string fields at any depth). Drops the server-side `_layout` cache so the
+ * backend re-derives the header/bullet layout from the new text.
+ */
+function deepReplaceFirst(node: unknown, from: string, to: string, done: { v: boolean }): unknown {
+  if (done.v) return node;
+  if (typeof node === "string") {
+    if (node.includes(from)) { done.v = true; return node.replace(from, to); }
+    return node;
+  }
+  if (Array.isArray(node)) return node.map((n) => deepReplaceFirst(n, from, to, done));
+  if (node && typeof node === "object") {
+    const out: Record<string, unknown> = {};
+    for (const k of Object.keys(node as Record<string, unknown>)) {
+      if (k === "_layout" || k === "_layout_src") continue;
+      out[k] = deepReplaceFirst((node as Record<string, unknown>)[k], from, to, done);
+    }
+    return out;
+  }
+  return node;
+}
+
 export default function CVEditorPage() {
   const { id } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
@@ -29,10 +52,10 @@ export default function CVEditorPage() {
 
   const [cv, setCv] = useState<CV | null>(null);
   const [suggestions, setSuggestions] = useState<CVSuggestion[]>([]);
-  const [selectedSuggestions, setSelectedSuggestions] = useState<Set<string>>(new Set());
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [applyingId, setApplyingId] = useState<string | null>(null);
   const [loadingCv, setLoadingCv] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
-  const [applying, setApplying] = useState(false);
   const [activeTab, setActiveTab] = useState<"editor" | "suggestions" | "preview">("editor");
   const [previewHtml, setPreviewHtml] = useState("");
 
@@ -68,33 +91,50 @@ export default function CVEditorPage() {
     }
   }
 
-  async function applySelected() {
-    if (selectedSuggestions.size === 0) return;
-    setApplying(true);
+  // Apply one (possibly user-edited) suggestion: replace the original text with
+  // the reviewed text inside the CV, persist, and refresh. The user always sees
+  // and can edit the text first — nothing is written without an explicit click.
+  async function applyOne(sug: CVSuggestion) {
+    if (!cv) return;
+    const replacement = (drafts[sug.id] ?? sug.suggested_text ?? "").trim();
+    const original = (sug.original_text ?? "").trim();
+    if (!replacement) {
+      toast.error("Nội dung chỉnh sửa đang trống");
+      return;
+    }
+    if (!original) {
+      toast.error("Gợi ý này không có đoạn gốc để thay thế");
+      return;
+    }
+    setApplyingId(sug.id);
     try {
-      await api.post(`/cv/${id}/suggestions/apply`, {
-        suggestion_ids: Array.from(selectedSuggestions),
-      });
-      setSuggestions((prev) => prev.filter((s) => !selectedSuggestions.has(s.id)));
-      setSelectedSuggestions(new Set());
-      toast.success("Đã áp dụng các gợi ý");
+      const done = { v: false };
+      const nextSections = deepReplaceFirst(cv.sections, original, replacement, done) as CV["sections"];
+      let nextStatement = cv.profile_statement;
+      if (!done.v && cv.profile_statement && cv.profile_statement.includes(original)) {
+        nextStatement = cv.profile_statement.replace(original, replacement);
+        done.v = true;
+      }
+      if (!done.v) {
+        toast.error("Không tìm thấy đoạn gốc trong CV để thay thế");
+        return;
+      }
+      await api.patch(`/cv/${id}`, { sections: nextSections, profile_statement: nextStatement });
+      await api.post(`/cv/${id}/suggestions/apply`, { suggestion_ids: [sug.id] });
       const updated = await api.get<CV>(`/cv/${id}`);
       setCv(updated);
       setPreviewHtml(updated.html_content || "");
+      setSuggestions((prev) => prev.filter((s) => s.id !== sug.id));
+      toast.success("Đã áp dụng vào CV");
     } catch {
       toast.error("Không áp dụng được");
     } finally {
-      setApplying(false);
+      setApplyingId(null);
     }
   }
 
-  function toggleSuggestion(id: string) {
-    setSelectedSuggestions((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  function dismissOne(sugId: string) {
+    setSuggestions((prev) => prev.filter((s) => s.id !== sugId));
   }
 
   async function updateField(field: string, value: string) {
@@ -217,80 +257,89 @@ export default function CVEditorPage() {
             {suggestions.length === 0 ? (
               <div className="text-center py-20">
                 <h3 className="font-semibold text-slate-700 text-base mb-1.5">Chưa có gợi ý nào</h3>
-                <p className="text-sm text-slate-400 mb-5">Nhấn "Phân tích AI" để nhận gợi ý cải thiện CV</p>
+                <p className="text-sm text-slate-400 mb-5 leading-relaxed">
+                  Nhấn nút bên dưới để AI rà soát CV và đề xuất chỉnh sửa.
+                  <br />Bạn sẽ <span className="text-slate-600 font-medium">xem và sửa từng gợi ý</span> trước khi áp dụng — không có gì bị ghi đè tự động.
+                </p>
                 <button
                   onClick={analyze}
                   disabled={analyzing}
                   className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
                 >
-                  {analyzing ? "Đang phân tích…" : "Phân tích ngay"}
+                  {analyzing ? "Đang phân tích…" : "Phân tích CV với AI"}
                 </button>
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-gray-600 text-sm">{suggestions.length} gợi ý · {selectedSuggestions.size} đã chọn</p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setSelectedSuggestions(new Set(suggestions.map((s) => s.id)))}
-                      className="text-sm text-brand-600 hover:underline"
-                    >
-                      Chọn tất cả
-                    </button>
-                    {selectedSuggestions.size > 0 && (
-                      <button
-                        onClick={applySelected}
-                        disabled={applying}
-                        className="bg-brand-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium"
-                      >
-                        {applying ? "Đang áp dụng..." : `Áp dụng (${selectedSuggestions.size})`}
-                      </button>
-                    )}
-                  </div>
+                <div className="mb-5">
+                  <p className="text-slate-900 text-sm font-semibold">{suggestions.length} gợi ý từ AI</p>
+                  <p className="text-slate-500 text-sm mt-0.5">
+                    Chỉnh sửa nội dung trong ô nếu cần, rồi nhấn <span className="font-medium text-slate-700">Áp dụng vào CV</span>. Mỗi thay đổi chỉ được lưu khi bạn bấm áp dụng.
+                  </p>
                 </div>
 
-                <div className="space-y-3">
-                  {suggestions.map((sug) => (
-                    <div
-                      key={sug.id}
-                      onClick={() => toggleSuggestion(sug.id)}
-                      className={clsx(
-                        "border rounded-xl p-4 cursor-pointer transition",
-                        selectedSuggestions.has(sug.id)
-                          ? "ring-2 ring-brand-400 " + (SUGGESTION_TYPE_COLORS[sug.suggestion_type] || "bg-gray-50 border-gray-200")
-                          : SUGGESTION_TYPE_COLORS[sug.suggestion_type] || "bg-gray-50 border-gray-200 hover:border-gray-300"
-                      )}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className={clsx(
-                          "w-4 h-4 rounded flex-shrink-0 border-2",
-                          selectedSuggestions.has(sug.id)
-                            ? "bg-brand-500 border-brand-500"
-                            : "border-gray-300 bg-white"
-                        )} />
-                        <span className="text-xs font-semibold uppercase tracking-wide">
-                          {SUGGESTION_TYPE_LABELS[sug.suggestion_type] || sug.suggestion_type}
-                        </span>
-                        {sug.section && (
-                          <span className="text-xs bg-white/60 px-2 py-0.5 rounded">{sug.section}</span>
-                        )}
-                      </div>
+                <div className="space-y-4">
+                  {suggestions.map((sug) => {
+                    const draft = drafts[sug.id] ?? sug.suggested_text ?? "";
+                    const busy = applyingId === sug.id;
+                    return (
+                      <div key={sug.id} className="border border-slate-200 rounded-xl p-4 bg-white">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className={clsx(
+                            "text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded border",
+                            SUGGESTION_TYPE_COLORS[sug.suggestion_type] || "bg-gray-50 border-gray-200 text-gray-600"
+                          )}>
+                            {SUGGESTION_TYPE_LABELS[sug.suggestion_type] || sug.suggestion_type}
+                          </span>
+                          {sug.section && (
+                            <span className="text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{sug.section}</span>
+                          )}
+                        </div>
 
-                      {sug.original_text && (
-                        <p className="text-xs line-through text-gray-400 mb-1.5 bg-white/50 rounded p-2">
-                          {sug.original_text}
-                        </p>
-                      )}
-                      {sug.suggested_text && (
-                        <p className="text-sm font-medium mb-1.5 bg-white/60 rounded p-2">
-                          {sug.suggested_text}
-                        </p>
-                      )}
-                      {sug.reason && (
-                        <p className="text-xs opacity-70">{sug.reason}</p>
-                      )}
-                    </div>
-                  ))}
+                        {sug.reason && (
+                          <p className="text-[13px] text-slate-500 mb-3 leading-relaxed">{sug.reason}</p>
+                        )}
+
+                        {sug.original_text && (
+                          <div className="mb-3">
+                            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Bản hiện tại</p>
+                            <p className="text-[13px] text-slate-400 line-through bg-slate-50 border border-slate-100 rounded-lg p-2.5 leading-relaxed">
+                              {sug.original_text}
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="mb-3">
+                          <label className="block text-[11px] font-semibold text-emerald-600 uppercase tracking-wide mb-1">
+                            Đề xuất của AI — bạn có thể chỉnh tay
+                          </label>
+                          <textarea
+                            value={draft}
+                            onChange={(e) => setDrafts((prev) => ({ ...prev, [sug.id]: e.target.value }))}
+                            rows={Math.max(2, Math.ceil((draft.length || 1) / 70))}
+                            className="w-full resize-none border border-emerald-200 bg-emerald-50/40 rounded-lg p-2.5 text-[13px] text-slate-800 leading-relaxed focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-emerald-300"
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => applyOne(sug)}
+                            disabled={busy || !draft.trim()}
+                            className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors cursor-pointer"
+                          >
+                            {busy ? "Đang áp dụng…" : "Áp dụng vào CV"}
+                          </button>
+                          <button
+                            onClick={() => dismissOne(sug.id)}
+                            disabled={busy}
+                            className="text-slate-500 hover:text-slate-900 disabled:opacity-50 text-sm font-medium px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                          >
+                            Bỏ qua
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </>
             )}

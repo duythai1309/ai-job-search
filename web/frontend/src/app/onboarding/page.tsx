@@ -104,7 +104,18 @@ export default function OnboardingPage() {
 
   // ── Review (interactive highlight + inline edit) ──────────────
   if (step === "review" && analysis) {
-    return <CvReviewEditor analysis={analysis} fileName={fileName} onFinish={saveCvAndFinish} />;
+    return (
+      <CvReviewEditor
+        analysis={analysis}
+        fileName={fileName}
+        onFinish={saveCvAndFinish}
+        onReupload={() => {
+          setAnalysis(null);
+          setFileName("");
+          setStep("welcome");
+        }}
+      />
+    );
   }
 
   // ── Uploading / Analyzing ─────────────────────────────────────
