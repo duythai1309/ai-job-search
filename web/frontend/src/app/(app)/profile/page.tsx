@@ -166,7 +166,7 @@ export default function ProfilePage() {
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer ${
               activeTab === tab.id
-                ? "border-slate-900 text-slate-900"
+                ? "border-blue-600 text-blue-600"
                 : "border-transparent text-slate-400 hover:text-slate-700"
             }`}
           >
@@ -208,7 +208,7 @@ export default function ProfilePage() {
           <button
             onClick={saveBasic}
             disabled={saving}
-            className="w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white py-3 rounded-xl font-medium transition-colors cursor-pointer"
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-3 rounded-xl font-medium transition-colors cursor-pointer"
           >
             {saving ? "Đang lưu…" : "Lưu thông tin"}
           </button>
@@ -242,7 +242,7 @@ export default function ProfilePage() {
             <button
               onClick={addSkill}
               disabled={addingSkill || !newSkill.name.trim()}
-              className="bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50 transition-colors cursor-pointer"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50 transition-colors cursor-pointer"
             >
               Thêm
             </button>

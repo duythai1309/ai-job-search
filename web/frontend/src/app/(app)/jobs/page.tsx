@@ -165,7 +165,7 @@ export default function JobsPage() {
         <button
           onClick={() => search()}
           disabled={loading}
-          className="bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white px-8 py-3 rounded-xl font-semibold text-sm transition-colors cursor-pointer"
+          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-8 py-3 rounded-xl font-semibold text-sm transition-colors cursor-pointer"
         >
           {loading ? "Đang tìm..." : "Tìm kiếm"}
         </button>
@@ -190,7 +190,7 @@ export default function JobsPage() {
               onClick={() => toggleSource(s.id)}
               className={`px-3 py-1.5 rounded-full font-medium transition-colors cursor-pointer border ${
                 selectedSources.includes(s.id)
-                  ? "bg-slate-900 text-white border-slate-900"
+                  ? "bg-blue-600 text-white border-blue-600"
                   : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
               }`}
             >
@@ -204,7 +204,7 @@ export default function JobsPage() {
             <button
               key={q}
               onClick={() => search(q)}
-              className="text-slate-600 hover:text-slate-900 underline underline-offset-4 decoration-slate-300 hover:decoration-slate-900 transition-colors cursor-pointer"
+              className="text-slate-600 hover:text-blue-600 underline underline-offset-4 decoration-slate-300 hover:decoration-blue-400 transition-colors cursor-pointer"
             >
               {q}
             </button>
@@ -314,8 +314,8 @@ export default function JobsPage() {
                         title={saved ? "Đã lưu" : "Lưu việc làm"}
                         className={`w-9 h-9 flex items-center justify-center rounded-xl border transition-colors cursor-pointer ${
                           saved
-                            ? "border-slate-900 bg-slate-900 text-white"
-                            : "border-slate-200 text-slate-400 hover:border-slate-400 hover:text-slate-900"
+                            ? "border-blue-600 bg-blue-600 text-white"
+                            : "border-slate-200 text-slate-400 hover:border-blue-400 hover:text-blue-600"
                         }`}
                       >
                         <Bookmark className={`w-4 h-4 ${saved ? "fill-white" : ""}`} />
@@ -331,7 +331,7 @@ export default function JobsPage() {
                       </a>
                       <Link
                         href={`/jobs/${job.id}`}
-                        className="hidden sm:inline-flex items-center px-4 h-9 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors"
+                        className="hidden sm:inline-flex items-center px-4 h-9 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors"
                       >
                         Đánh giá AI
                       </Link>

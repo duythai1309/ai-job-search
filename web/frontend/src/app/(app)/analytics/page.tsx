@@ -12,7 +12,8 @@ import {
   RefreshCw, Lightbulb, BarChart2,
 } from "lucide-react";
 
-const CHART_COLORS = ["#0f172a", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0"];
+// Harmonious categorical palette (blue-led with warm/cool accents).
+const CHART_COLORS = ["#2563eb", "#7c3aed", "#f59e0b", "#10b981", "#06b6d4", "#f43f5e"];
 
 interface MarketData {
   top_skills: { skill: string; count: number }[];
@@ -102,7 +103,7 @@ export default function AnalyticsPage() {
         <button
           onClick={refresh}
           disabled={refreshing}
-          className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors cursor-pointer"
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors cursor-pointer"
         >
           <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
           {refreshing ? "Đang phân tích..." : "Cập nhật phân tích"}
@@ -145,7 +146,7 @@ export default function AnalyticsPage() {
           </p>
           <button
             onClick={refresh}
-            className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-semibold text-sm hover:bg-slate-800 transition-colors cursor-pointer"
+            className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-semibold text-sm hover:bg-blue-700 transition-colors cursor-pointer"
           >
             Phân tích ngay
           </button>
@@ -154,8 +155,9 @@ export default function AnalyticsPage() {
         <div className="space-y-5">
           {/* Insights banner */}
           {market.insights && market.insights.length > 0 && (
-            <div className="bg-slate-900 rounded-2xl p-6 text-white">
-              <div className="flex items-center gap-2.5 mb-3">
+            <div className="relative overflow-hidden bg-gradient-to-br from-blue-700 via-indigo-600 to-violet-600 rounded-2xl p-6 text-white">
+              <div className="absolute -top-16 -right-12 w-56 h-56 bg-amber-300/20 rounded-full blur-3xl pointer-events-none" />
+              <div className="relative flex items-center gap-2.5 mb-3">
                 <Lightbulb className="w-4 h-4 text-white/70" />
                 <h2 className="font-semibold">Nhận định thị trường</h2>
               </div>
@@ -181,7 +183,7 @@ export default function AnalyticsPage() {
                       contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
                       cursor={{ fill: "#f8fafc" }}
                     />
-                    <Bar dataKey="count" fill="#0f172a" radius={[0, 6, 6, 0]} />
+                    <Bar dataKey="count" fill="#2563eb" radius={[0, 6, 6, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </SectionCard>
@@ -227,7 +229,7 @@ export default function AnalyticsPage() {
                       contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
                       cursor={{ fill: "#f8fafc" }}
                     />
-                    <Bar dataKey="count" fill="#475569" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="count" fill="#6366f1" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </SectionCard>
@@ -247,7 +249,7 @@ export default function AnalyticsPage() {
                         </div>
                         <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-slate-900 rounded-full transition-all duration-500"
+                            className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500"
                             style={{ width: `${pct}%` }}
                           />
                         </div>

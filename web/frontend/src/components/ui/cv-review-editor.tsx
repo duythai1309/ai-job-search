@@ -175,7 +175,7 @@ export default function CvReviewEditor({
           <button
             onClick={handleFinish}
             disabled={finishing}
-            className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors cursor-pointer"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors cursor-pointer"
           >
             {finishing ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             {finishing ? "Đang lưu..." : finishLabel}
@@ -352,7 +352,7 @@ export default function CvReviewEditor({
                   {selected.suggestion && selected.text.trim() !== selected.suggestion.trim() && (
                     <button
                       onClick={() => applySuggestion(selected)}
-                      className="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors cursor-pointer"
+                      className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors cursor-pointer"
                     >
                       <Wand2 className="w-4 h-4" /> Áp dụng gợi ý
                     </button>

@@ -166,7 +166,7 @@ export default function CVEditorPage() {
           <button
             onClick={analyze}
             disabled={analyzing}
-            className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
           >
             {analyzing ? "Đang phân tích…" : "Phân tích AI"}
           </button>
@@ -191,7 +191,7 @@ export default function CVEditorPage() {
             className={clsx(
               "px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer",
               activeTab === tab.id
-                ? "border-slate-900 text-slate-900"
+                ? "border-blue-600 text-blue-600"
                 : "border-transparent text-slate-400 hover:text-slate-700"
             )}
           >
@@ -264,7 +264,7 @@ export default function CVEditorPage() {
                 <button
                   onClick={analyze}
                   disabled={analyzing}
-                  className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+                  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
                 >
                   {analyzing ? "Đang phân tích…" : "Phân tích CV với AI"}
                 </button>
@@ -325,7 +325,7 @@ export default function CVEditorPage() {
                           <button
                             onClick={() => applyOne(sug)}
                             disabled={busy || !draft.trim()}
-                            className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors cursor-pointer"
+                            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors cursor-pointer"
                           >
                             {busy ? "Đang áp dụng…" : "Áp dụng vào CV"}
                           </button>

@@ -8,20 +8,21 @@ import { ClipboardList, LayoutGrid, List, ExternalLink, Trash2, GripVertical } f
 
 const STATUSES = ["bookmarked", "applied", "interview", "offer", "rejected", "withdrawn"] as const;
 
+// Aligned with the dashboard pipeline palette for a consistent status language.
 const STATUS_DOT: Record<string, string> = {
-  bookmarked: "bg-slate-300",
-  applied:    "bg-slate-900",
-  interview:  "bg-amber-400",
+  bookmarked: "bg-blue-300",
+  applied:    "bg-blue-600",
+  interview:  "bg-amber-500",
   offer:      "bg-emerald-500",
-  rejected:   "bg-red-400",
-  withdrawn:  "bg-slate-200",
+  rejected:   "bg-rose-400",
+  withdrawn:  "bg-slate-300",
 };
 
 function ScoreBar({ score }: { score: number }) {
   return (
     <div className="mt-2.5 flex items-center gap-2">
       <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
-        <div className="h-full rounded-full bg-slate-900 transition-all" style={{ width: `${score}%` }} />
+        <div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${score}%` }} />
       </div>
       <span className="text-[11px] font-semibold text-slate-600 tabular-nums">{score}%</span>
     </div>
@@ -243,7 +244,7 @@ export default function ApplicationsPage() {
             onClick={() => setView("kanban")}
             className={clsx(
               "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer",
-              view === "kanban" ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-900"
+              view === "kanban" ? "bg-blue-600 text-white" : "text-slate-500 hover:text-slate-900"
             )}
           >
             <LayoutGrid className="w-3.5 h-3.5" /> Kanban
@@ -252,7 +253,7 @@ export default function ApplicationsPage() {
             onClick={() => setView("table")}
             className={clsx(
               "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer",
-              view === "table" ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-900"
+              view === "table" ? "bg-blue-600 text-white" : "text-slate-500 hover:text-slate-900"
             )}
           >
             <List className="w-3.5 h-3.5" /> Bảng
@@ -282,7 +283,7 @@ export default function ApplicationsPage() {
           </p>
           <a
             href="/jobs"
-            className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors cursor-pointer"
           >
             Khám phá việc làm
           </a>

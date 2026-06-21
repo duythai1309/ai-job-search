@@ -115,7 +115,7 @@ export default function CVListPage() {
   if (uploadState === "analyzing") {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
-        <div className="w-12 h-12 rounded-2xl bg-slate-900 animate-pulse" />
+        <div className="w-12 h-12 rounded-2xl bg-blue-600 animate-pulse" />
         <p className="font-semibold text-slate-900">AI đang phân tích CV của bạn…</p>
         <p className="text-sm text-slate-400">{uploadFileName} · thường mất 10–20 giây</p>
       </div>
@@ -133,7 +133,7 @@ export default function CVListPage() {
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => uploadInputRef.current?.click()}
-            className="bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors cursor-pointer"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors cursor-pointer"
           >
             Tải CV lên
           </button>
@@ -173,7 +173,7 @@ export default function CVListPage() {
           <div className="flex items-center justify-center gap-2.5">
             <button
               onClick={() => uploadInputRef.current?.click()}
-              className="bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors cursor-pointer"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-semibold text-sm transition-colors cursor-pointer"
             >
               Tải CV lên
             </button>
@@ -195,7 +195,7 @@ export default function CVListPage() {
               <div className="flex items-start justify-between gap-3 mb-4">
                 <h3 className="font-semibold text-slate-900 line-clamp-2 leading-snug">{cv.title}</h3>
                 {cv.is_master && (
-                  <span className="shrink-0 text-[11px] border border-slate-900 text-slate-900 px-2.5 py-1 rounded-full font-semibold">
+                  <span className="shrink-0 text-[11px] border border-blue-200 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-semibold">
                     CV chính
                   </span>
                 )}
@@ -221,7 +221,7 @@ export default function CVListPage() {
               <div className="flex items-center gap-4 mt-auto pt-4 border-t border-slate-100">
                 <Link
                   href={`/cv/${cv.id}`}
-                  className="text-sm font-semibold text-slate-900 hover:underline"
+                  className="text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline"
                 >
                   Chỉnh sửa
                 </Link>

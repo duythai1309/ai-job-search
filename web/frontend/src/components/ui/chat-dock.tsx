@@ -185,7 +185,7 @@ export default function ChatDock({
         {/* Header */}
         <div className="h-16 px-5 flex items-center justify-between border-b border-slate-200/70 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
             <div>
@@ -236,7 +236,7 @@ export default function ChatDock({
                   className={clsx(
                     "max-w-[85%] rounded-2xl px-4 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap",
                     msg.role === "user"
-                      ? "bg-slate-900 text-white rounded-br-sm"
+                      ? "bg-blue-600 text-white rounded-br-sm"
                       : "bg-slate-100 text-slate-800 rounded-bl-sm"
                   )}
                 >
@@ -277,7 +277,7 @@ export default function ChatDock({
         onClick={() => onOpenChange(true)}
         tabIndex={open ? -1 : 0}
         className={clsx(
-          "fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-slate-900 hover:bg-slate-800 text-white",
+          "fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white",
           "flex items-center justify-center shadow-lg hover:shadow-xl cursor-pointer",
           "transition-all duration-300 ease-out",
           open ? "opacity-0 scale-75 pointer-events-none" : "opacity-100 scale-100"

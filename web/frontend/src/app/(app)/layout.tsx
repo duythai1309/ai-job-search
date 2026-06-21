@@ -119,7 +119,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 title={expanded ? undefined : label}
                 className={`flex items-center gap-3 h-11 px-[15px] rounded-xl text-sm font-medium transition-colors duration-200 ${
                   active
-                    ? "bg-slate-900 text-white"
+                    ? "bg-blue-600 text-white"
                     : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
                 }`}
               >
@@ -137,7 +137,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             title={expanded ? undefined : "Hồ sơ cá nhân"}
             className={`flex items-center gap-3 h-11 px-[15px] rounded-xl text-sm font-medium transition-colors duration-200 ${
               pathname === "/profile"
-                ? "bg-slate-900 text-white"
+                ? "bg-blue-600 text-white"
                 : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
             }`}
           >
@@ -146,7 +146,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </Link>
 
           <div className="flex items-center gap-2.5 h-14 px-[11px] rounded-xl bg-slate-50">
-            <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-[11px] font-bold shrink-0 select-none">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center text-[11px] font-bold shrink-0 select-none">
               {initials}
             </div>
             <div

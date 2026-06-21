@@ -77,7 +77,7 @@ export default function TailorCvPage() {
   if (!analysis || !job) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-[#FAFAFA]">
-        <div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center animate-pulse">
+        <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center animate-pulse">
           <Sparkles className="w-7 h-7 text-white" />
         </div>
         <div className="text-center">
@@ -87,7 +87,7 @@ export default function TailorCvPage() {
           <p className="text-slate-400 text-sm mt-1">Tìm những chỗ cần tinh chỉnh để khớp job</p>
         </div>
         <div className="w-52 h-1 bg-slate-200 rounded-full overflow-hidden">
-          <div className="h-full w-2/3 bg-slate-900 rounded-full animate-pulse" />
+          <div className="h-full w-2/3 bg-blue-600 rounded-full animate-pulse" />
         </div>
       </div>
     );

@@ -122,7 +122,7 @@ export default function OnboardingPage() {
   if (step === "uploading" || step === "analyzing") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-[#FAFAFA]">
-        <div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center animate-pulse">
+        <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center animate-pulse">
           <Sparkles className="w-7 h-7 text-white" />
         </div>
         <div className="text-center">
@@ -136,7 +136,7 @@ export default function OnboardingPage() {
         <div className="w-52 h-1 bg-slate-200 rounded-full overflow-hidden">
           <div
             className={clsx(
-              "h-full bg-slate-900 rounded-full transition-all duration-700",
+              "h-full bg-blue-600 rounded-full transition-all duration-700",
               step === "uploading" ? "w-1/3" : "w-2/3 animate-pulse"
             )}
           />
