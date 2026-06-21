@@ -6,7 +6,7 @@ import toast from "react-hot-toast";
 import clsx from "clsx";
 import { ClipboardList, LayoutGrid, List, ExternalLink, Trash2, GripVertical } from "lucide-react";
 
-const STATUSES = ["bookmarked", "applied", "interview", "offer", "rejected", "withdrawn"] as const;
+const STATUSES = ["bookmarked", "applied", "interview", "offer", "rejected"] as const;
 
 // Aligned with the dashboard pipeline palette for a consistent status language.
 const STATUS_DOT: Record<string, string> = {
@@ -76,7 +76,7 @@ function KanbanColumn({
 
   return (
     <div
-      className="w-60 shrink-0 flex flex-col"
+      className="flex flex-col min-w-0"
       onDragOver={(e) => { if (dragging) { e.preventDefault(); setIsOver(true); } }}
       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsOver(false); }}
       onDrop={handleDrop}
@@ -268,9 +268,9 @@ export default function ApplicationsPage() {
 
       {/* Loading */}
       {loading ? (
-        <div className="flex flex-wrap gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="w-60 shrink-0 space-y-3 animate-pulse">
+        <div className="grid grid-cols-5 gap-4 max-w-6xl">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="space-y-3 animate-pulse min-w-0">
               <div className="h-4 bg-slate-100 rounded w-2/3" />
               <div className="h-28 bg-slate-100 rounded-xl" />
               <div className="h-28 bg-slate-100 rounded-xl" />
@@ -294,7 +294,7 @@ export default function ApplicationsPage() {
           </a>
         </div>
       ) : view === "kanban" ? (
-        <div className="flex flex-wrap items-start gap-4 pb-2">
+        <div className="grid grid-cols-5 gap-4 items-start max-w-6xl pb-2">
           {STATUSES.map((s) => (
             <KanbanColumn
               key={s}
