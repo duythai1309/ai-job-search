@@ -75,7 +75,7 @@ function KanbanColumn({
 
   return (
     <div
-      className="min-w-[230px] flex-1 flex flex-col"
+      className="flex flex-col min-w-0"
       onDragOver={(e) => { if (dragging) { e.preventDefault(); setIsOver(true); } }}
       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsOver(false); }}
       onDrop={handleDrop}
@@ -262,9 +262,9 @@ export default function ApplicationsPage() {
 
       {/* Loading */}
       {loading ? (
-        <div className="flex gap-6 overflow-x-auto">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="min-w-[230px] flex-1 space-y-3 animate-pulse">
+            <div key={i} className="space-y-3 animate-pulse">
               <div className="h-4 bg-slate-100 rounded w-2/3" />
               <div className="h-28 bg-slate-100 rounded-xl" />
               <div className="h-28 bg-slate-100 rounded-xl" />
@@ -272,15 +272,23 @@ export default function ApplicationsPage() {
           ))}
         </div>
       ) : apps.length === 0 ? (
-        <div className="text-center py-28 border border-dashed border-slate-200 rounded-2xl">
-          <ClipboardList className="w-6 h-6 text-slate-300 mx-auto mb-3" />
-          <p className="font-semibold text-slate-700">Chưa có đơn ứng tuyển nào</p>
-          <p className="text-sm text-slate-400 mt-1">
-            Tìm việc và lưu vào tracker để bắt đầu theo dõi
+        <div className="text-center py-24 border border-dashed border-blue-200 bg-blue-50/40 rounded-2xl px-6">
+          <div className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center mx-auto mb-4">
+            <ClipboardList className="w-6 h-6 text-blue-600" />
+          </div>
+          <p className="font-semibold text-slate-700">Bắt đầu theo dõi hành trình ứng tuyển</p>
+          <p className="text-sm text-slate-500 mt-1 mb-4">
+            Lưu việc làm bạn quan tâm vào đây để quản lý từ lúc nộp đến khi nhận offer.
           </p>
+          <a
+            href="/jobs"
+            className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors cursor-pointer"
+          >
+            Khám phá việc làm
+          </a>
         </div>
       ) : view === "kanban" ? (
-        <div className="flex gap-6 overflow-x-auto pb-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 pb-2">
           {STATUSES.map((s) => (
             <KanbanColumn
               key={s}
