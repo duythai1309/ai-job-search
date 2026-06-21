@@ -5,6 +5,7 @@ import {
   PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { api } from "@/lib/api";
+import { scopeToTech, SCOPE_LABEL } from "@/lib/scope";
 import toast from "react-hot-toast";
 import {
   TrendingUp, Building2, DollarSign, MapPin,
@@ -86,13 +87,17 @@ export default function AnalyticsPage() {
     ? Object.entries(summary.by_source).map(([name, value]) => ({ name, value }))
     : [];
 
+  // Keep only Data/AI/IT industries (with a non-empty fallback) so the sector
+  // chart stays within the product's scope. See lib/scope.
+  const scopedSectors = scopeToTech(market?.top_sectors || [], (s) => s.sector);
+
   return (
     <div className="px-8 lg:px-12 py-10 max-w-screen-2xl">
       {/* Header */}
       <div className="flex items-end justify-between mb-10">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Thị trường</h1>
-          <p className="text-slate-400 mt-1.5 text-sm">Xu hướng tuyển dụng Việt Nam theo thời gian thực</p>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Thị trường {SCOPE_LABEL}</h1>
+          <p className="text-slate-400 mt-1.5 text-sm">Xu hướng tuyển dụng ngành Data · AI · IT tại Việt Nam</p>
         </div>
         <button
           onClick={refresh}
@@ -182,19 +187,19 @@ export default function AnalyticsPage() {
               </SectionCard>
             )}
 
-            {market.top_sectors?.length > 0 && (
+            {scopedSectors.length > 0 && (
               <SectionCard title="Ngành tuyển dụng nhiều nhất" icon={Building2}>
                 <ResponsiveContainer width="100%" height={240}>
                   <PieChart>
                     <Pie
-                      data={market.top_sectors.slice(0, 6)}
+                      data={scopedSectors.slice(0, 6)}
                       dataKey="count"
                       nameKey="sector"
                       cx="50%" cy="50%"
                       outerRadius={88}
                       paddingAngle={3}
                     >
-                      {market.top_sectors.slice(0, 6).map((_, i) => (
+                      {scopedSectors.slice(0, 6).map((_, i) => (
                         <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                       ))}
                     </Pie>

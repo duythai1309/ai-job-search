@@ -3,6 +3,7 @@ import { useState, useCallback } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { JobPosting, SOURCE_LABELS, formatSalary } from "@/lib/types";
+import { TECH_ROLES, SCOPE_LABEL } from "@/lib/scope";
 import toast from "react-hot-toast";
 import {
   Search, MapPin, Bookmark, ExternalLink, Briefcase,
@@ -18,10 +19,7 @@ const SOURCES = [
   { id: "vieclam24h",   label: "Vieclam24h" },
 ];
 
-const QUICK_SEARCHES = [
-  "Frontend Developer", "Data Analyst", "Product Manager",
-  "Backend Developer", "UX Designer", "Marketing",
-];
+const QUICK_SEARCHES = TECH_ROLES;
 
 function CompanyAvatar({ logo, name }: { logo?: string; name: string }) {
   if (logo) {
@@ -136,7 +134,7 @@ export default function JobsPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Tìm việc</h1>
         <p className="text-slate-400 mt-1.5 text-sm">
-          Tổng hợp từ VietnamWorks, TopCV, ITviec và CareerViet
+          Việc làm {SCOPE_LABEL} — tổng hợp từ VietnamWorks, TopCV, ITviec và CareerViet
         </p>
       </div>
 
