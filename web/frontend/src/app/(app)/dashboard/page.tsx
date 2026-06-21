@@ -20,13 +20,14 @@ interface Stats {
   avg_fit_score: number | null;
 }
 
+// Harmonious palette: blue leads (brand), amber/emerald/rose as accents.
 const STATUS_CHART_COLORS: Record<string, string> = {
-  bookmarked: "#cbd5e1",
-  applied:    "#0f172a",
-  interview:  "#f59e0b",
-  offer:      "#10b981",
-  rejected:   "#f87171",
-  withdrawn:  "#e2e8f0",
+  bookmarked: "#93c5fd", // blue-300
+  applied:    "#2563eb", // blue-600
+  interview:  "#f59e0b", // amber-500
+  offer:      "#10b981", // emerald-500
+  rejected:   "#fb7185", // rose-400
+  withdrawn:  "#cbd5e1", // slate-300
 };
 
 function greeting() {
@@ -89,27 +90,28 @@ export default function DashboardPage() {
   ];
 
   const quickActions = [
-    { href: "/jobs", Icon: Search, label: "Tìm kiếm việc làm", desc: "Tổng hợp từ 4 cổng tuyển dụng VN" },
-    { href: "/cv", Icon: FileText, label: "Tạo hoặc chỉnh CV", desc: "AI phân tích và đề xuất cải thiện" },
-    { href: "/analytics", Icon: TrendingUp, label: "Xu hướng thị trường", desc: "Kỹ năng và mức lương đang hot" },
+    { href: "/jobs", Icon: Search, label: "Tìm kiếm việc làm", desc: "Tổng hợp từ 4 cổng tuyển dụng VN", tint: "bg-blue-50 text-blue-600" },
+    { href: "/cv", Icon: FileText, label: "Tạo hoặc chỉnh CV", desc: "AI phân tích và đề xuất cải thiện", tint: "bg-violet-50 text-violet-600" },
+    { href: "/analytics", Icon: TrendingUp, label: "Xu hướng thị trường", desc: "Kỹ năng và mức lương đang hot", tint: "bg-amber-50 text-amber-600" },
   ];
 
   return (
     <div className="px-8 lg:px-12 py-10 max-w-screen-2xl">
-      {/* Header — gradient hero, consistent with the landing page */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-blue-600 to-indigo-700 px-8 py-9 mb-10">
-        <div className="absolute -top-16 -right-10 w-64 h-64 bg-cyan-400/20 rounded-full blur-3xl pointer-events-none" />
+      {/* Header — layered gradient hero with a warm amber accent for balance */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-700 via-indigo-600 to-violet-600 px-8 py-9 mb-10">
+        <div className="absolute -top-20 -right-16 w-72 h-72 bg-amber-300/25 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-10 w-72 h-72 bg-cyan-300/15 rounded-full blur-3xl pointer-events-none" />
         <div className="relative">
-          <p className="text-sm text-blue-100 mb-1">{greeting()}</p>
+          <p className="text-sm text-blue-100/90 mb-1">{greeting()}</p>
           <h1 className="text-3xl font-bold text-white tracking-tight">
             {firstName ? `${firstName}.` : "Chào mừng trở lại."}
           </h1>
-          <p className="text-blue-100/90 text-sm mt-2 max-w-md">
+          <p className="text-blue-100/80 text-sm mt-2 max-w-md">
             Theo dõi tiến độ ứng tuyển và để Vica AI gợi ý bước tiếp theo cho bạn.
           </p>
           <Link
             href="/jobs"
-            className="inline-flex items-center gap-2 mt-5 bg-white text-blue-700 hover:bg-blue-50 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 mt-5 bg-amber-400 text-blue-950 hover:bg-amber-300 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors cursor-pointer shadow-sm"
           >
             Tìm việc ngay <ArrowRight className="w-4 h-4" />
           </Link>
@@ -192,30 +194,34 @@ export default function DashboardPage() {
           <h2 className="font-semibold text-slate-900">Bắt đầu nhanh</h2>
           <p className="text-xs text-slate-400 mt-0.5 mb-6">Truy cập các tính năng phổ biến</p>
           <div className="divide-y divide-slate-200 border-y border-slate-200">
-            {quickActions.map(({ href, Icon, label, desc }) => (
+            {quickActions.map(({ href, Icon, label, desc, tint }) => (
               <Link
                 key={href}
                 href={href}
                 className="flex items-center gap-4 py-4 group cursor-pointer"
               >
-                <Icon className="w-[18px] h-[18px] text-slate-400 group-hover:text-blue-600 transition-colors shrink-0" />
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${tint}`}>
+                  <Icon className="w-[18px] h-[18px]" />
+                </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-slate-800">{label}</div>
+                  <div className="text-sm font-medium text-slate-800 group-hover:text-slate-900">{label}</div>
                   <div className="text-xs text-slate-400">{desc}</div>
                 </div>
-                <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all shrink-0" />
+                <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-slate-900 group-hover:translate-x-0.5 transition-all shrink-0" />
               </Link>
             ))}
             <button
               onClick={() => window.dispatchEvent(new CustomEvent("vica:open-chat"))}
               className="w-full flex items-center gap-4 py-4 group cursor-pointer text-left"
             >
-              <MessageSquare className="w-[18px] h-[18px] text-slate-400 group-hover:text-blue-600 transition-colors shrink-0" />
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-emerald-50 text-emerald-600">
+                <MessageSquare className="w-[18px] h-[18px]" />
+              </div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-slate-800">Hỏi AI tư vấn</div>
+                <div className="text-sm font-medium text-slate-800 group-hover:text-slate-900">Hỏi AI tư vấn</div>
                 <div className="text-xs text-slate-400">Chiến lược tìm việc cá nhân hoá — ngay trên trang này</div>
               </div>
-              <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all shrink-0" />
+              <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-slate-900 group-hover:translate-x-0.5 transition-all shrink-0" />
             </button>
           </div>
         </div>
