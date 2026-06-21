@@ -88,11 +88,13 @@ function KanbanColumn({
         <span className="text-xs text-slate-400 tabular-nums">{apps.length}</span>
       </div>
 
-      {/* Cards / drop zone */}
+      {/* Cards / drop zone — only reserves space while dragging so empty
+          columns stay compact when there are few applications. */}
       <div
         className={clsx(
-          "space-y-2.5 flex-1 rounded-xl transition-colors p-1 -m-1",
-          isOver && "bg-slate-100 ring-2 ring-slate-300 ring-inset"
+          "space-y-2.5 rounded-xl transition-colors p-1 -m-1",
+          dragging && "min-h-[64px]",
+          isOver && "bg-blue-50 ring-2 ring-blue-300 ring-inset"
         )}
       >
         {apps.map((app) => (
@@ -165,14 +167,18 @@ function KanbanColumn({
         ))}
 
         {apps.length === 0 && (
-          <div
-            className={clsx(
-              "py-8 text-center text-xs border border-dashed rounded-xl transition-colors",
-              isOver ? "border-slate-400 text-slate-500" : "border-slate-200 text-slate-300"
-            )}
-          >
-            {dragging ? "Thả vào đây" : "Trống"}
-          </div>
+          dragging ? (
+            <div
+              className={clsx(
+                "py-8 text-center text-xs border border-dashed rounded-xl transition-colors",
+                isOver ? "border-blue-400 text-blue-500" : "border-slate-200 text-slate-400"
+              )}
+            >
+              Thả vào đây
+            </div>
+          ) : (
+            <div className="py-1.5 text-center text-[11px] text-slate-300 select-none">—</div>
+          )
         )}
       </div>
     </div>
@@ -289,7 +295,7 @@ export default function ApplicationsPage() {
           </a>
         </div>
       ) : view === "kanban" ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 pb-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 pb-2 items-start">
           {STATUSES.map((s) => (
             <KanbanColumn
               key={s}
