@@ -115,14 +115,49 @@ export default function ProfilePage() {
     );
   }
 
+  // Surface what's still missing so users know what to fill and why it matters.
+  const checklist: { label: string; done: boolean; tab: string }[] = [
+    { label: "Họ và tên", done: !!profile.full_name, tab: "basic" },
+    { label: "Địa điểm", done: !!profile.location, tab: "basic" },
+    { label: "Số điện thoại", done: !!profile.phone, tab: "basic" },
+    { label: "LinkedIn", done: !!profile.linkedin_url, tab: "basic" },
+    { label: "Kỹ năng", done: (profile.skills || []).length > 0, tab: "skills" },
+  ];
+  const missing = checklist.filter((c) => !c.done);
+  const completeness = Math.round(((checklist.length - missing.length) / checklist.length) * 100);
+
   return (
     <div className="px-8 py-10 max-w-3xl">
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Hồ sơ của tôi</h1>
-        <p className="text-slate-400 mt-1.5 text-sm">
-          Thông tin hồ sơ được dùng để đánh giá độ phù hợp và tạo CV
+        <p className="text-slate-500 mt-1.5 text-sm leading-relaxed max-w-xl">
+          Đây là thông tin Vica AI dùng để <span className="font-medium text-slate-700">đánh giá độ phù hợp với việc làm</span> và{" "}
+          <span className="font-medium text-slate-700">tự động điền vào CV</span>. Càng đầy đủ, gợi ý càng chính xác.
         </p>
       </div>
+
+      {missing.length > 0 && (
+        <div className="mb-8 rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-amber-900">Hoàn thiện hồ sơ ({completeness}%)</p>
+            <span className="text-xs text-amber-700">Còn {missing.length} mục</span>
+          </div>
+          <div className="h-1.5 bg-amber-100 rounded-full overflow-hidden mb-4">
+            <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${completeness}%` }} />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {missing.map((m) => (
+              <button
+                key={m.label}
+                onClick={() => setActiveTab(m.tab)}
+                className="text-xs font-medium text-amber-900 bg-white border border-amber-200 hover:border-amber-400 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+              >
+                + {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-1 border-b border-slate-200/70 mb-8">
         {tabs.map((tab) => (
