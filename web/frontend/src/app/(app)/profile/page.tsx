@@ -286,14 +286,84 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {(activeTab === "experience" || activeTab === "education") && (
-        <div className="rounded-2xl p-6 sm:p-8 border border-slate-200 bg-white text-center py-16">
-          <h3 className="font-semibold text-slate-700 mb-1.5">
-            {activeTab === "experience" ? "Kinh nghiệm làm việc" : "Học vấn"}
-          </h3>
-          <p className="text-slate-400 text-sm leading-relaxed">
-            Tính năng chỉnh sửa trực tiếp đang phát triển.
-            <br />Hiện tại dữ liệu được đồng bộ từ CV của bạn.
+      {activeTab === "experience" && (
+        <div className="rounded-2xl p-6 sm:p-8 border border-slate-200 bg-white">
+          {(profile.experience || []).length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-10">
+              Chưa có kinh nghiệm nào. Tải CV lên để Vica tự động trích xuất kinh nghiệm của bạn.
+            </p>
+          ) : (
+            <div className="space-y-6">
+              {(profile.experience || []).map((exp) => (
+                <div key={exp.id} className="border-l-2 border-slate-200 pl-4">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <h3 className="font-semibold text-slate-900">{exp.job_title}</h3>
+                    <span className="text-xs text-slate-400 shrink-0">
+                      {[exp.start_date?.slice(0, 4), exp.is_current ? "Hiện tại" : exp.end_date?.slice(0, 4)]
+                        .filter(Boolean)
+                        .join(" – ")}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-500 mt-0.5">
+                    {[exp.company, exp.location].filter(Boolean).join(" · ")}
+                  </p>
+                  {exp.responsibilities.length > 0 && (
+                    <ul className="mt-2 space-y-1 list-disc list-inside text-sm text-slate-600">
+                      {exp.responsibilities.map((r, i) => <li key={i}>{r}</li>)}
+                    </ul>
+                  )}
+                  {exp.technologies.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {exp.technologies.map((t, i) => (
+                        <span key={i} className="text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded">{t}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="text-xs text-slate-400 text-center mt-8 pt-6 border-t border-slate-100">
+            Dữ liệu được đồng bộ từ CV của bạn. Tính năng chỉnh sửa trực tiếp đang phát triển.
+          </p>
+        </div>
+      )}
+
+      {activeTab === "education" && (
+        <div className="rounded-2xl p-6 sm:p-8 border border-slate-200 bg-white">
+          {(profile.education || []).length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-10">
+              Chưa có học vấn nào. Tải CV lên để Vica tự động trích xuất học vấn của bạn.
+            </p>
+          ) : (
+            <div className="space-y-6">
+              {(profile.education || []).map((edu) => (
+                <div key={edu.id} className="border-l-2 border-slate-200 pl-4">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <h3 className="font-semibold text-slate-900">
+                      {[edu.degree, edu.field].filter(Boolean).join(" – ") || edu.institution}
+                    </h3>
+                    <span className="text-xs text-slate-400 shrink-0">
+                      {[edu.start_year, edu.end_year].filter(Boolean).join(" – ")}
+                    </span>
+                  </div>
+                  {edu.degree || edu.field ? (
+                    <p className="text-sm text-slate-500 mt-0.5">
+                      {[edu.institution, edu.gpa ? `GPA: ${edu.gpa}` : null].filter(Boolean).join(" · ")}
+                    </p>
+                  ) : null}
+                  {edu.thesis && <p className="text-sm text-slate-600 mt-1">Luận văn: {edu.thesis}</p>}
+                  {edu.highlights.length > 0 && (
+                    <ul className="mt-2 space-y-1 list-disc list-inside text-sm text-slate-600">
+                      {edu.highlights.map((h, i) => <li key={i}>{h}</li>)}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="text-xs text-slate-400 text-center mt-8 pt-6 border-t border-slate-100">
+            Dữ liệu được đồng bộ từ CV của bạn. Tính năng chỉnh sửa trực tiếp đang phát triển.
           </p>
         </div>
       )}
