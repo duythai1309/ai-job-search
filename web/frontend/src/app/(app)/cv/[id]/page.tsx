@@ -78,12 +78,16 @@ export default function CVEditorPage() {
 
   async function analyze() {
     setAnalyzing(true);
+    setSuggestions([]); // clear stale; new ones stream in below
+    setActiveTab("suggestions"); // show the tab immediately so progress is visible
+    let count = 0;
     try {
-      const params = jobId ? `?job_posting_id=${jobId}` : "";
-      const result = await api.post<{ suggestions: CVSuggestion[] }>(`/cv/${id}/analyze${params}`);
-      setSuggestions(result.suggestions || []);
-      setActiveTab("suggestions");
-      toast.success(`Tìm thấy ${result.suggestions.length} gợi ý cải thiện`);
+      await api.streamAnalyzeCv(id, jobId || undefined, (s) => {
+        count += 1;
+        setSuggestions((prev) => [...prev, s as unknown as CVSuggestion]);
+      });
+      if (count > 0) toast.success(`Tìm thấy ${count} gợi ý cải thiện`);
+      else toast("CV của bạn khá ổn — chưa có gợi ý nào nổi bật.");
     } catch (e: any) {
       toast.error(e.message || "Có lỗi khi phân tích");
     } finally {

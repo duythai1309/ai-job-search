@@ -54,7 +54,8 @@ function toEditSections(sections: CVSection[]): EditSection[] {
         ...it,
         id: it.id || `${s.id}-${ii}`,
         original: it.text,
-        status: it.weak ? "weak" : "ok",
+        // Entry-title (header) lines are structural, never a weak point.
+        status: it.weak && !it.header ? "weak" : "ok",
       })),
     };
   });
@@ -242,7 +243,7 @@ export default function CvReviewEditor({
                 <div className="space-y-1">
                   {section.items.map((item) => {
                     const isSel = item.id === selectedId;
-                    const heading = isHeadingText(item.text);
+                    const heading = item.header || isHeadingText(item.text);
                     return (
                       <div
                         key={item.id}

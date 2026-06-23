@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
-import { api, CVAnalysisResult } from "@/lib/api";
+import { api, CVAnalysisResult, CVSection } from "@/lib/api";
 import clsx from "clsx";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
@@ -18,6 +18,7 @@ export default function OnboardingPage() {
   const [dragOver, setDragOver] = useState(false);
   const [fileName, setFileName] = useState("");
   const [analysis, setAnalysis] = useState<CVAnalysisResult | null>(null);
+  const [partial, setPartial] = useState<CVAnalysisResult | null>(null);
   const [userName, setUserName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragDepth = useRef(0);
@@ -45,14 +46,47 @@ export default function OnboardingPage() {
     setStep("uploading");
     await new Promise((r) => setTimeout(r, 500));
     setStep("analyzing");
+    setPartial(null);
     try {
-      const result = await api.uploadCv(file);
-      setAnalysis(result);
+      // Assemble the analysis as NDJSON events stream in, surfacing each piece
+      // in the "analyzing" view so the user sees progress instead of a spinner.
+      let assembled: CVAnalysisResult = {
+        name: "",
+        overall_score: 0,
+        summary_message: "",
+        top_priorities: [],
+        sections: [],
+      };
+      await api.streamUploadCv(file, (event) => {
+        if (event.type === "meta") {
+          assembled = {
+            ...assembled,
+            name: event.name,
+            headline: event.headline,
+            contacts: event.contacts,
+            overall_score: event.overall_score,
+            summary_message: event.summary_message,
+            top_priorities: event.top_priorities,
+          };
+          setPartial({ ...assembled });
+        } else if (event.type === "section") {
+          assembled = { ...assembled, sections: [...assembled.sections, event as CVSection] };
+          setPartial({ ...assembled });
+        } else if (event.type === "error") {
+          throw new Error(event.message || "Lỗi phân tích CV");
+        }
+      });
+      if (assembled.sections.length === 0 && !assembled.name) {
+        throw new Error("Không phân tích được CV. Vui lòng thử lại.");
+      }
+      setAnalysis(assembled);
       setStep("review");
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Có lỗi khi phân tích CV";
       toast.error(msg);
       setStep("welcome");
+    } finally {
+      setPartial(null);
     }
   }, []);
 
@@ -121,7 +155,7 @@ export default function OnboardingPage() {
   // ── Uploading / Analyzing ─────────────────────────────────────
   if (step === "uploading" || step === "analyzing") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-[#FAFAFA]">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-[#FAFAFA] px-4 py-10">
         <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center animate-pulse">
           <Sparkles className="w-7 h-7 text-white" />
         </div>
@@ -130,7 +164,11 @@ export default function OnboardingPage() {
             {step === "uploading" ? "Đang tải file lên..." : "AI đang phân tích CV của bạn..."}
           </p>
           <p className="text-slate-400 text-sm mt-1">
-            {step === "uploading" ? fileName : "Thường mất 10–20 giây"}
+            {step === "uploading"
+              ? fileName
+              : partial?.name
+                ? partial.name + (partial.headline ? ` · ${partial.headline}` : "")
+                : "Đang đọc CV..."}
           </p>
         </div>
         <div className="w-52 h-1 bg-slate-200 rounded-full overflow-hidden">
@@ -141,9 +179,32 @@ export default function OnboardingPage() {
             )}
           />
         </div>
-        <p className="text-xs text-slate-400">
-          {step === "analyzing" ? "Đang đọc và chấm điểm từng mục..." : ""}
-        </p>
+
+        {/* Progressive results: sections appear live as they stream in. */}
+        {step === "analyzing" && partial && (
+          <div className="w-full max-w-md space-y-2">
+            {typeof partial.overall_score === "number" && partial.overall_score > 0 && (
+              <div className="flex items-center justify-center gap-2 text-sm font-bold text-blue-700">
+                <Sparkles className="w-4 h-4" /> {partial.overall_score}/100
+              </div>
+            )}
+            {partial.sections.map((s, i) => (
+              <motion.div
+                key={s.id || i}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center justify-between gap-3 px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm"
+              >
+                <span className="text-sm font-medium text-slate-700 truncate">{s.title}</span>
+                <span className="text-xs font-bold text-slate-400 shrink-0">✓</span>
+              </motion.div>
+            ))}
+            <p className="text-xs text-slate-400 text-center pt-1">Đang phân tích từng mục…</p>
+          </div>
+        )}
+        {step === "analyzing" && !partial && (
+          <p className="text-xs text-slate-400">Đang đọc và chấm điểm từng mục...</p>
+        )}
       </div>
     );
   }
