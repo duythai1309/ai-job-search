@@ -141,6 +141,37 @@ export default function ChatDock({
         { id: Date.now().toString(), role: "user", content: message },
         { id: "streaming", role: "ai", content: "" },
       ]);
+
+      // Typewriter reveal: network chunks fill `target`, while a steady timer
+      // reveals it a slice at a time. Decoupling what's shown from how the bytes
+      // arrive means the reply always types out smoothly — even when a proxy
+      // buffers the whole response and delivers it in one shot.
+      let target = "";
+      let shown = 0;
+      let receiving = true;
+      let timer = 0;
+
+      const setStreamingContent = (s: string) =>
+        setMessages((m) => m.map((msg) => (msg.id === "streaming" ? { ...msg, content: s } : msg)));
+
+      const revealDone = new Promise<void>((resolve) => {
+        const loop = () => {
+          if (shown < target.length) {
+            // Catch up when far behind (a long, buffered reply) but stay gentle
+            // for live streaming, so it reads like natural typing either way.
+            const step = Math.max(2, Math.ceil((target.length - shown) / 40));
+            shown = Math.min(target.length, shown + step);
+            setStreamingContent(target.slice(0, shown));
+          }
+          if (!receiving && shown >= target.length) {
+            resolve();
+            return;
+          }
+          timer = window.setTimeout(loop, 16);
+        };
+        loop();
+      });
+
       try {
         const { reader, sessionId: sid } = await api.streamChat({
           session_id: sessionId,
@@ -150,19 +181,19 @@ export default function ChatDock({
         });
         if (!sessionId && sid) setSessionId(sid);
         const decoder = new TextDecoder();
-        let full = "";
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          full += decoder.decode(value, { stream: true });
-          setMessages((m) =>
-            m.map((msg) => (msg.id === "streaming" ? { ...msg, content: full } : msg))
-          );
+          target += decoder.decode(value, { stream: true });
         }
+        receiving = false;
+        await revealDone; // let the typewriter finish before finalizing the bubble
         setMessages((m) =>
           m.map((msg) => (msg.id === "streaming" ? { ...msg, id: Date.now().toString() } : msg))
         );
       } catch {
+        receiving = false;
+        window.clearTimeout(timer);
         setMessages((m) => m.filter((msg) => msg.id !== "streaming"));
       } finally {
         setStreaming(false);
@@ -240,7 +271,14 @@ export default function ChatDock({
                       : "bg-slate-100 text-slate-800 rounded-bl-sm"
                   )}
                 >
-                  {msg.content || (
+                  {msg.content ? (
+                    <>
+                      {msg.content}
+                      {msg.id === "streaming" && (
+                        <span className="inline-block w-0.5 h-3.5 ml-0.5 align-middle bg-slate-500 animate-pulse" />
+                      )}
+                    </>
+                  ) : (
                     <span className="flex gap-1 py-1">
                       {[0, 150, 300].map((d) => (
                         <span
