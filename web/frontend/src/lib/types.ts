@@ -108,10 +108,23 @@ export interface CV {
 
 export interface CVSection {
   id: string;
-  type: "experience" | "education" | "skills" | "custom";
+  type?: "experience" | "education" | "skills" | "custom";
   title: string;
-  content: unknown;
-  sort_order: number;
+  content?: unknown;
+  sort_order?: number;
+  content_preview?: string;
+  score?: number;
+  issues?: string[];
+  suggestions?: string[];
+  subtitle?: string;
+  items?: {
+    id: string;
+    text: string;
+    header?: boolean;
+    weak?: boolean;
+    issue?: string;
+    suggestion?: string;
+  }[];
 }
 
 export interface CVSuggestion {

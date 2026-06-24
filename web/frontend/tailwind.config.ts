@@ -9,6 +9,30 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        blue: {
+          50:  "#F0F5FA",
+          100: "#DCE9F2",
+          200: "#B9D2E6",
+          300: "#86B2D4",
+          400: "#4C8CC0",
+          500: "#1E6EA8",
+          600: "#005288", // VinUniversity Navy Blue
+          700: "#003F6B", // VinUniversity Deep Navy Blue
+          800: "#002D50",
+          900: "#001E36",
+        },
+        amber: {
+          50:  "#FDFBF7",
+          100: "#FAF4E3",
+          200: "#F3E4C1",
+          300: "#E9CD93",
+          400: "#DEB25E", // VinUniversity Gold
+          500: "#C8953C",
+          600: "#9F7026",
+          700: "#75501B",
+          800: "#503611",
+          900: "#2B1D08",
+        },
         primary: {
           50:  "#EFF6FF",
           100: "#DBEAFE",

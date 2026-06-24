@@ -96,27 +96,50 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="px-8 lg:px-12 py-10 max-w-screen-2xl">
+    <div className="max-w-screen-2xl">
       {/* Header — layered gradient hero with a warm amber accent for balance */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-700 via-indigo-600 to-violet-600 px-8 py-9 mb-10">
-        <div className="absolute -top-20 -right-16 w-72 h-72 bg-amber-300/25 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-10 w-72 h-72 bg-cyan-300/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative">
-          <p className="text-sm text-blue-100/90 mb-1">{greeting()}</p>
-          <h1 className="text-3xl font-bold text-white tracking-tight">
+      <div className="relative overflow-hidden rounded-3xl px-8 py-10 mb-10 border border-slate-200/50 shadow-md min-h-[220px] flex items-center bg-[#001E36]">
+        {/* Background Campus Photo with low opacity and hover scale effect */}
+        <div
+          className="absolute inset-0 bg-cover bg-center transition-transform duration-700 hover:scale-105"
+          style={{
+            backgroundImage: "url('/vinuni-campus.png')",
+            backgroundPosition: "center 48%",
+          }}
+        />
+        
+        {/* Layered Gradient Overlay for premium feel and text contrast */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: "linear-gradient(to right, #001E36 0%, #001E36 28%, rgba(0, 30, 54, 0.6) 60%, rgba(0, 30, 54, 0.1) 100%)"
+          }}
+        />
+        
+        {/* Gold stripe to anchor VinUni branding */}
+        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-[#DEB25E] via-[#C8953C] to-[#DEB25E]" />
+
+        {/* Ambient glow effects */}
+        <div className="absolute -top-20 -right-16 w-72 h-72 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-10 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 max-w-xl md:max-w-2xl text-white">
+          <p className="text-xs font-semibold text-amber-400 tracking-wider uppercase mb-1.5">{greeting()}</p>
+          <h1 className="text-3xl font-extrabold text-white tracking-tight leading-tight drop-shadow-sm">
             {firstName ? `${firstName}.` : "Chào mừng trở lại."}
           </h1>
-          <p className="text-blue-100/80 text-sm mt-2 max-w-md">
+          <p className="text-blue-50/90 text-sm mt-3 max-w-md leading-relaxed font-medium drop-shadow-sm">
             Theo dõi tiến độ ứng tuyển và để Vica AI gợi ý bước tiếp theo cho bạn.
           </p>
           <Link
             href="/jobs"
-            className="inline-flex items-center gap-2 mt-5 bg-amber-400 text-blue-950 hover:bg-amber-300 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors cursor-pointer shadow-sm"
+            className="inline-flex items-center gap-2 mt-6 bg-gradient-to-r from-amber-400 to-amber-500 text-blue-950 hover:from-amber-300 hover:to-amber-400 text-sm font-bold px-5 py-2.5 rounded-xl transition-all duration-200 cursor-pointer shadow-[0_4px_12px_rgba(222,178,94,0.3)] hover:shadow-none hover:translate-y-[0.5px]"
           >
             Tìm việc ngay <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       </div>
+
 
       {/* Metrics: flat row with thin dividers */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 border-y border-slate-200 divide-x divide-slate-200 mb-12">

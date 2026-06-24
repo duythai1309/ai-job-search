@@ -235,7 +235,7 @@ export default function ApplicationsPage() {
   }, {} as Record<string, Application[]>);
 
   return (
-    <div className="px-8 lg:px-12 py-10 max-w-screen-2xl">
+    <div className="max-w-screen-2xl">
       {/* Header */}
       <div className="flex items-end justify-between mb-10">
         <div>
@@ -294,20 +294,22 @@ export default function ApplicationsPage() {
           </a>
         </div>
       ) : view === "kanban" ? (
-        <div className="grid grid-cols-5 gap-4 items-start max-w-6xl pb-2">
-          {STATUSES.map((s) => (
-            <KanbanColumn
-              key={s}
-              status={s}
-              apps={byStatus[s]}
-              draggingId={draggingId}
-              onStartDrag={setDraggingId}
-              onEndDrag={() => setDraggingId(null)}
-              onMoveCard={moveCard}
-              onStatusChange={updateStatus}
-              onDelete={deleteApp}
-            />
-          ))}
+        <div className="overflow-x-auto pb-4 scrollbar-thin">
+          <div className="grid grid-cols-5 gap-4 items-start min-w-[1200px] pb-2">
+            {STATUSES.map((s) => (
+              <KanbanColumn
+                key={s}
+                status={s}
+                apps={byStatus[s]}
+                draggingId={draggingId}
+                onStartDrag={setDraggingId}
+                onEndDrag={() => setDraggingId(null)}
+                onMoveCard={moveCard}
+                onStatusChange={updateStatus}
+                onDelete={deleteApp}
+              />
+            ))}
+          </div>
         </div>
       ) : (
         <div className="border-y border-slate-200">

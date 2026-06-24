@@ -77,7 +77,7 @@ export default function JobDetailPage() {
   if (!job) return <div className="p-8 text-center text-slate-400">Không tìm thấy việc làm</div>;
 
   return (
-    <div className="p-8 max-w-4xl">
+    <div className="max-w-4xl">
       <Link href="/jobs" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-6 transition-colors font-body">
         <ArrowLeft className="w-4 h-4" /> Quay lại tìm kiếm
       </Link>

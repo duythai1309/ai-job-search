@@ -10,6 +10,15 @@ import {
 } from "lucide-react";
 import ChatDock from "@/components/ui/chat-dock";
 
+const VinUniLogoV = () => (
+  <img
+    src="/vinuni-logo-v.png"
+    alt="VinUniversity Logo"
+    className="w-7 h-7 shrink-0 mr-1.5 object-contain"
+    style={{ transform: "translateY(0.5px)" }}
+  />
+);
+
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Tổng quan" },
   { href: "/jobs",      icon: Search,           label: "Tìm việc" },
@@ -95,9 +104,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         }`}
       >
         {/* Brand */}
-        <div className="h-16 flex items-center border-b border-slate-200/70 shrink-0 px-[23px]">
-          <Link href="/dashboard" className="flex items-baseline font-bold text-slate-900 text-xl tracking-tight">
-            <span>V</span>
+        <div className="h-16 flex items-center border-b border-slate-200/70 shrink-0 px-[20px]">
+          <Link href="/dashboard" className="flex items-center font-bold text-slate-900 text-xl tracking-tight">
+            <VinUniLogoV />
             <span
               className={`overflow-hidden transition-all duration-300 ease-out ${
                 expanded ? "opacity-100 max-w-[3rem]" : "opacity-0 max-w-0"
@@ -171,14 +180,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Content keeps the collapsed rail width — the sidebar expands over it.
-          When the chat panel opens, content smoothly yields the right side. */}
+      {/* Content adjusts left margin dynamically based on whether sidebar is expanded or collapsed */}
       <main
-        className={`ml-[72px] flex-1 min-h-screen transition-[margin] duration-300 ease-out ${
-          chatOpen ? "lg:mr-[420px]" : "mr-0"
-        }`}
+        className={`flex-1 min-h-screen transition-all duration-300 ease-out ${
+          expanded ? "ml-60" : "ml-[72px]"
+        } ${chatOpen ? "lg:mr-[420px]" : "mr-0"}`}
       >
-        <div key={pathname} className="animate-page-in">
+        <div key={pathname} className="animate-page-in px-6 md:px-10 lg:px-12 py-8">
           {children}
         </div>
       </main>
