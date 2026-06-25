@@ -4,6 +4,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase";
 import toast from "react-hot-toast";
 import { User, Mail, Lock, CheckCircle2, ArrowRight, Inbox, RefreshCw } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
@@ -46,38 +47,64 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex font-sans">
       {/* Left branding panel */}
-      <div className="hidden lg:flex w-1/2 bg-primary-900 flex-col justify-between p-12 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "linear-gradient(white 1px, transparent 1px), linear-gradient(to right, white 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
-        <div className="absolute top-0 right-0 w-80 h-80 bg-primary-700 rounded-full blur-3xl opacity-40" />
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-accent-500 rounded-full blur-3xl opacity-15" />
-        <div className="relative">
-          <Link href="/" className="flex items-center">
-            <span className="font-bold text-white text-2xl tracking-tight">Vica</span>
-          </Link>
-        </div>
-        <div className="relative">
-          <h2 className="text-4xl font-extrabold text-white leading-tight mb-4">
-            Bắt đầu hành trình<br />nghề nghiệp của bạn
-          </h2>
-          <p className="text-primary-200 text-base leading-relaxed mb-8 font-body">
-            Tạo tài khoản miễn phí và khám phá hàng nghìn cơ hội việc làm phù hợp với bạn.
-          </p>
-          <ul className="space-y-3">
-            {["Hoàn toàn miễn phí, không cần thẻ tín dụng", "AI đánh giá CV và độ phù hợp tức thì", "Theo dõi tất cả đơn ứng tuyển một nơi"].map((item) => (
-              <li key={item} className="flex items-center gap-3 text-white/80 text-sm font-body">
-                <CheckCircle2 className="w-4 h-4 text-accent-400 shrink-0" /> {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <p className="relative text-primary-400 text-xs font-body">© 2025 Vica · Dành cho sinh viên Việt Nam</p>
+      <div className="hidden lg:flex w-1/2 bg-[#001E36] flex-col justify-between p-12 relative overflow-hidden">
+        {/* Background graphic */}
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-85 transition-transform duration-1000 hover:scale-105"
+          style={{
+            backgroundImage: "url('/vinuni-graphic.jpg')",
+          }}
+        />
+        {/* Dark overlay for text contrast */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#001E36]/60 via-[#001E36]/30 to-[#001E36]/80 pointer-events-none" />
+        
+        {/* Gold stripe to anchor VinUni branding */}
+        <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-[#DEB25E] via-[#C8953C] to-[#DEB25E]" />
+
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="relative z-10 flex flex-col justify-between h-full w-full"
+        >
+          <div className="relative">
+            <Link href="/" className="flex items-center gap-1.5 font-bold text-white text-2xl tracking-tight">
+              <img src="/vinuni-logo-v-white.png" alt="VinUniversity Logo" className="w-8 h-8 object-contain" />
+              <span>ica</span>
+            </Link>
+          </div>
+          <div className="relative">
+            <h2 className="text-4xl font-extrabold text-white leading-tight mb-4">
+              Bắt đầu hành trình<br />nghề nghiệp của bạn
+            </h2>
+            <p className="text-blue-100/90 text-sm leading-relaxed mb-8 font-body">
+              Tạo tài khoản miễn phí và khám phá hàng nghìn cơ hội việc làm phù hợp với bạn.
+            </p>
+            <ul className="space-y-3">
+              {["Hoàn toàn miễn phí, không cần thẻ tín dụng", "AI đánh giá CV và độ phù hợp tức thì", "Theo dõi tất cả đơn ứng tuyển một nơi"].map((item) => (
+                <li key={item} className="flex items-center gap-3 text-white/90 text-sm font-body">
+                  <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" /> {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <p className="relative text-blue-200/80 text-xs font-body">© 2025 Vica · Dành cho sinh viên Việt Nam</p>
+        </motion.div>
       </div>
 
       {/* Right panel */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12 bg-white">
+      <motion.div
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="flex-1 flex items-center justify-center px-6 py-12 bg-white"
+      >
         <div className="w-full max-w-sm">
           <div className="lg:hidden mb-8">
-            <span className="font-bold text-slate-900 text-2xl tracking-tight">Vica</span>
+            <Link href="/" className="flex items-center gap-1.5 font-bold text-slate-900 text-2xl tracking-tight">
+              <img src="/vinuni-logo-v.png" alt="VinUniversity Logo" className="w-8 h-8 object-contain" />
+              <span>ica</span>
+            </Link>
           </div>
 
           {registered ? (
@@ -191,7 +218,7 @@ export default function RegisterPage() {
             </>
           )}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

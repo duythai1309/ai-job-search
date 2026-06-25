@@ -172,7 +172,7 @@ export default function CVEditorPage() {
   }
   if (!cv) return <div className="p-8 text-slate-400">Không tìm thấy CV</div>;
 
-  const editableSections = [...cv.sections].sort((a, b) => a.sort_order - b.sort_order);
+  const editableSections = [...cv.sections].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
   return (
     <div className="flex flex-col h-full bg-[#F4F4F5]">

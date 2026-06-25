@@ -48,6 +48,9 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v
  */
 function mockEnabled(): boolean {
   if (process.env.NEXT_PUBLIC_USE_MOCK === "1") return true;
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return true;
+  }
   if (typeof window === "undefined") return false;
   try {
     const flag = new URLSearchParams(window.location.search).get("mock");

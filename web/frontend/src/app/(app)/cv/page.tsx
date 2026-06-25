@@ -123,7 +123,7 @@ export default function CVListPage() {
   }
 
   return (
-    <div className="px-8 lg:px-12 py-10 max-w-screen-2xl">
+    <div className="max-w-screen-2xl">
       {/* Header */}
       <div className="flex items-end justify-between mb-10">
         <div>

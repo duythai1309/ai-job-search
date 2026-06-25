@@ -107,3 +107,41 @@ Safety:
 - Existing `skills_required`, `url`, and `raw_data` columns remain intact.
 - No live Supabase, scraping, or AI calls are made by tests.
 - No frontend UI/UX files or secrets are changed.
+
+## UX/UI Pro-Max Frontend Enhancements
+
+Decision:
+- Enable modern, space-filling multi-column layouts on desktop for major views (CV Builder, Job Search, Profile) while preserving mobile responsiveness.
+- Align `CVSection` types between frontend client definitions and REST endpoint serialization schemas to eliminate compilation type conflicts.
+
+Completed:
+- Designed responsive split panes with sticky widgets on desktop and graceful tabbed layouts on mobile for CV Editor and Profile screens.
+- Reconstructed suggestion application rules to cleanly process both `add` (item append) and `remove` (item exclusion/filter) action types in Next.js state.
+- Integrated dynamic HTML generation in mock resolvers to automatically preview CV modifications in real-time.
+- Verified compilation and optimized asset generation via successful TypeScript typechecks and production Next.js builds.
+
+Safety:
+- Backend code, Supabase schemas, and logging structures were untouched.
+- Next.js build passes cleanly without compilation failures.
+
+## Consolidated Market Analytics Redesign (IT & Data Careers)
+
+Decision:
+- Redesign the Market Analytics view into a high-fidelity, unified market report dashboard for the entire IT & Data technology sector, completely removing the granular individual role selectors and sidebar accordions.
+- Use a typographic, minimalist single-page dashboard format with no icons, placing the Market Insights section at the very top of the page.
+- Limit the colors to a clean, monochromatic navy blue (`#005288`) and slate brand palette to project a highly professional, academic report style.
+- Embed comprehensive, curated regional data (salaries, locations, skills, trending tools) in the client layer to provide a rich analytics experience even if backend adapters are inactive or in compatibility stub mode.
+
+Completed:
+- Replaced the placeholder analytics page with a full-width, single-page professional dashboard featuring typographic layout styling and no decorative icons.
+- Placed the expert insights section at the top of the dashboard, styled with a prominent left-border navy indicator.
+- Designed 4 overview metric cards (Openings, Active Companies, Growth %, Avg Salary) with built-in monochromatic sparkline charts.
+- Custom-built Recharts Horizontal BarChart and AreaChart utilizing a unified Navy Blue fill and border style.
+- Replaced all colorful tags, icons, and status backgrounds with clean, high-contrast borders and text lists.
+- Validated compiler safety via successful strict TypeScript checks (`npx tsc --noEmit`).
+
+Safety:
+- No changes to backend routing or Supabase schemas.
+- Excluded complex state tracking for 12 individual roles, simplifying frontend code and improving page performance.
+
+

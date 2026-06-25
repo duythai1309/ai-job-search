@@ -241,42 +241,182 @@ export const mockApplications: Application[] = [
 
 /* --------------------------------- CVs ------------------------------------ */
 
-function cvHtml(title: string, role: string): string {
+export function generateCvHtml(cv: CV): string {
+  const role = cv.target_role || "Vị trí mục tiêu";
+  const statement = cv.profile_statement || `Sinh viên CNTT năm cuối với 2 năm kinh nghiệm React/TypeScript, mong muốn phát triển sự nghiệp ở vị trí ${role}.`;
+
+  let experienceHtml = "";
+  let skillsHtml = "";
+
+  const expSection = cv.sections?.find((s) => s.title.toLowerCase().includes("kinh nghiệm"));
+  if (expSection && expSection.items && expSection.items.length > 0) {
+    let listOpen = false;
+    expSection.items.forEach((item) => {
+      if (item.header) {
+        if (listOpen) {
+          experienceHtml += "</ul>";
+          listOpen = false;
+        }
+        experienceHtml += `<p style="margin-top: 12px; margin-bottom: 4px;"><strong>${item.text}</strong></p>`;
+      } else {
+        if (!listOpen) {
+          experienceHtml += "<ul style='margin-top: 4px; margin-bottom: 8px; padding-left: 20px;'>";
+          listOpen = true;
+        }
+        experienceHtml += `<li style="margin-bottom: 2px;">${item.text}</li>`;
+      }
+    });
+    if (listOpen) {
+      experienceHtml += "</ul>";
+    }
+  } else {
+    experienceHtml = `
+    <p><strong>Frontend Developer (Thực tập) — FPT Software</strong> (06/2024 – 12/2024)</p>
+    <ul><li>Phát triển giao diện hệ thống nội bộ bằng React, TypeScript</li><li>Tối ưu hiệu năng, giảm 30% thời gian tải</li></ul>
+    `;
+  }
+
+  const skillsSection = cv.sections?.find((s) => s.title.toLowerCase().includes("kỹ năng"));
+  if (skillsSection && skillsSection.items && skillsSection.items.length > 0) {
+    skillsHtml = skillsSection.items.map((item) => `<p style="margin: 4px 0;">${item.text}</p>`).join("");
+  } else {
+    skillsHtml = `<p>React · TypeScript · Next.js · Tailwind CSS · Node.js · Figma · Git</p>`;
+  }
+
   return `
   <div style="font-family: Arial, sans-serif; color:#0f172a; padding:40px; line-height:1.6;">
     <h1 style="margin:0; font-size:24px;">Nguyễn Đức Thái</h1>
     <p style="margin:4px 0; color:#475569;">${role} · TP. Hồ Chí Minh · thai.nguyen@example.com</p>
     <hr style="border:none; border-top:1px solid #e2e8f0; margin:16px 0;" />
-    <h2 style="font-size:14px; text-transform:uppercase; letter-spacing:1px; color:#64748b;">Mục tiêu nghề nghiệp</h2>
-    <p>Sinh viên CNTT năm cuối với 2 năm kinh nghiệm React/TypeScript, mong muốn phát triển sự nghiệp ở vị trí ${role}.</p>
-    <h2 style="font-size:14px; text-transform:uppercase; letter-spacing:1px; color:#64748b;">Kinh nghiệm</h2>
-    <p><strong>Frontend Developer (Thực tập) — FPT Software</strong> (06/2024 – 12/2024)</p>
-    <ul><li>Phát triển giao diện hệ thống nội bộ bằng React, TypeScript</li><li>Tối ưu hiệu năng, giảm 30% thời gian tải</li></ul>
-    <h2 style="font-size:14px; text-transform:uppercase; letter-spacing:1px; color:#64748b;">Kỹ năng</h2>
-    <p>React · TypeScript · Next.js · Tailwind CSS · Node.js · Figma · Git</p>
+    <h2 style="font-size:14px; text-transform:uppercase; letter-spacing:1px; color:#64748b; margin-top:16px; margin-bottom:8px;">Mục tiêu nghề nghiệp</h2>
+    <p>${statement}</p>
+    <h2 style="font-size:14px; text-transform:uppercase; letter-spacing:1px; color:#64748b; margin-top:20px; margin-bottom:8px;">Kinh nghiệm</h2>
+    ${experienceHtml}
+    <h2 style="font-size:14px; text-transform:uppercase; letter-spacing:1px; color:#64748b; margin-top:20px; margin-bottom:8px;">Kỹ năng</h2>
+    ${skillsHtml}
   </div>`;
 }
 
 export const mockCvs: CV[] = [
   {
-    id: "cv-1", user_id: "mock-user", title: "CV Frontend Developer", target_role: "Frontend Developer",
-    target_company: "Tiki", profile_statement: "Sinh viên CNTT năm cuối, 2 năm kinh nghiệm React/TypeScript.",
-    sections: [], html_content: cvHtml("CV Frontend Developer", "Frontend Developer"),
-    is_master: true, version: 3, created_at: daysAgo(30), updated_at: daysAgo(2),
+    id: "cv-1",
+    user_id: "mock-user",
+    title: "CV Frontend Developer",
+    target_role: "Frontend Developer",
+    target_company: "Tiki",
+    profile_statement: "Sinh viên CNTT năm cuối đam mê công nghệ, mong muốn học hỏi trong môi trường năng động.",
+    is_master: true,
+    version: 3,
+    created_at: daysAgo(30),
+    updated_at: daysAgo(2),
+    sections: [
+      {
+        id: "s1",
+        title: "Mục tiêu nghề nghiệp",
+        content_preview: "",
+        score: 65,
+        issues: [],
+        suggestions: [],
+        items: [
+          {
+            id: "s1-0",
+            text: "Sinh viên CNTT năm cuối đam mê công nghệ, mong muốn học hỏi trong môi trường năng động.",
+            weak: true,
+            issue: "Quá chung chung và bị động (\"mong muốn học hỏi\") — không nêu giá trị bạn mang lại hay vị trí cụ thể.",
+            suggestion: "Frontend Developer với 2 năm kinh nghiệm React/TypeScript, từng tối ưu giảm 30% thời gian tải trang. Sẵn sàng đóng góp ngay vào việc phát triển sản phẩm web hiệu năng cao.",
+          },
+        ],
+      },
+      {
+        id: "s2",
+        title: "Kinh nghiệm",
+        subtitle: "Frontend Developer (Thực tập) · FPT Software · 06/2024 – 12/2024",
+        content_preview: "",
+        score: 72,
+        issues: [],
+        suggestions: [],
+        items: [
+          {
+            id: "s2-header",
+            text: "Frontend Developer (Thực tập) — FPT Software (06/2024 – 12/2024)",
+            header: true,
+          },
+          {
+            id: "s2-0",
+            text: "Phụ trách xây dựng giao diện và sửa lỗi cho hệ thống nội bộ.",
+            weak: true,
+            issue: "Thiếu công nghệ cụ thể và kết quả đo lường được.",
+            suggestion: "Phát triển 12+ màn hình cho hệ thống nội bộ bằng React, TypeScript và Tailwind, phối hợp cùng team 5 người theo quy trình Agile.",
+          },
+          {
+            id: "s2-1",
+            text: "Tối ưu hiệu năng trang web giúp tải nhanh hơn.",
+            weak: true,
+            issue: "Không có số liệu — \"nhanh hơn\" không thuyết phục nhà tuyển dụng.",
+            suggestion: "Giảm 30% thời gian tải trang nhờ code-splitting và lazy-loading, cải thiện điểm Lighthouse từ 68 lên 94.",
+          },
+          {
+            id: "s2-2",
+            text: "Được giữ lại làm part-time sau kỳ thực tập nhờ kết quả tốt.",
+            weak: false,
+          },
+        ],
+      },
+      {
+        id: "s3",
+        title: "Kỹ năng",
+        content_preview: "",
+        score: 84,
+        issues: [],
+        suggestions: [],
+        items: [
+          { id: "s3-0", text: "React · TypeScript · Next.js · Tailwind CSS · Node.js · Git · Figma", weak: false },
+          {
+            id: "s3-1",
+            text: "Sở thích: chơi game, xem phim, nghe nhạc.",
+            weak: true,
+            issue: "Thông tin không liên quan đến vị trí ứng tuyển, nên loại bỏ để tiết kiệm không gian.",
+            suggestion: "Kỹ năng bổ trợ: viết unit test (Jest, React Testing Library), tối ưu SEO, làm việc với REST API.",
+          },
+        ],
+      },
+    ],
+    html_content: "",
   },
   {
-    id: "cv-2", user_id: "mock-user", title: "CV Fullstack", target_role: "Fullstack Developer",
-    target_company: "VNG", profile_statement: "Định hướng fullstack với nền tảng frontend vững và Node.js.",
-    sections: [], html_content: cvHtml("CV Fullstack", "Fullstack Developer"),
-    is_master: false, version: 1, created_at: daysAgo(12), updated_at: daysAgo(5),
+    id: "cv-2",
+    user_id: "mock-user",
+    title: "CV Fullstack",
+    target_role: "Fullstack Developer",
+    target_company: "VNG",
+    profile_statement: "Định hướng fullstack với nền tảng frontend vững và Node.js.",
+    is_master: false,
+    version: 1,
+    created_at: daysAgo(12),
+    updated_at: daysAgo(5),
+    sections: [],
+    html_content: "",
   },
   {
-    id: "cv-3", user_id: "mock-user", title: "CV Thực tập", target_role: "Frontend Intern",
-    target_company: undefined, profile_statement: "Bản CV tinh gọn cho các vị trí thực tập.",
-    sections: [], html_content: cvHtml("CV Thực tập", "Frontend Intern"),
-    is_master: false, version: 2, created_at: daysAgo(20), updated_at: daysAgo(8),
+    id: "cv-3",
+    user_id: "mock-user",
+    title: "CV Thực tập",
+    target_role: "Frontend Intern",
+    target_company: undefined,
+    profile_statement: "Bản CV tinh gọn cho các vị trí thực tập.",
+    is_master: false,
+    version: 2,
+    created_at: daysAgo(20),
+    updated_at: daysAgo(8),
+    sections: [],
+    html_content: "",
   },
 ];
+
+// Initialize mock HTML contents
+mockCvs.forEach((c) => {
+  c.html_content = generateCvHtml(c);
+});
 
 export const mockCvSuggestions: CVSuggestion[] = [
   { id: "sg-1", section: "Mục tiêu nghề nghiệp", suggestion_type: "keyword", original_text: "đam mê công nghệ", suggested_text: "đam mê xây dựng sản phẩm web hiệu năng cao với React", reason: "Thêm từ khóa khớp với JD mục tiêu", is_applied: false },
@@ -537,12 +677,13 @@ export function resolveMock(method: string, rawPath: string, body?: unknown): un
         target_company: undefined,
         profile_statement: "",
         sections: (b.sections as CV["sections"]) || [],
-        html_content: cvHtml((b.title as string) || "CV mới", (b.target_role as string) || "Vị trí mục tiêu"),
+        html_content: "",
         is_master: (b.is_master as boolean) || false,
         version: 1,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
+      cv.html_content = generateCvHtml(cv);
       mockCvs.unshift(cv);
       return cv;
     }
@@ -563,7 +704,10 @@ export function resolveMock(method: string, rawPath: string, body?: unknown): un
     const cvMatch = path.match(/^\/cv\/([^/]+)$/);
     if (cvMatch) {
       const cv = mockCvs.find((c) => c.id === cvMatch[1]);
-      if (cv) Object.assign(cv, b, { updated_at: new Date().toISOString() });
+      if (cv) {
+        Object.assign(cv, b, { updated_at: new Date().toISOString() });
+        cv.html_content = generateCvHtml(cv);
+      }
       return cv ?? { id: cvMatch[1], ...b };
     }
     const appMatch = path.match(/^\/applications\/([^/]+)$/);

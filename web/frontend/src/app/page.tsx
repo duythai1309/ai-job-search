@@ -19,6 +19,22 @@ import {
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
+const VinUniLogoV = () => (
+  <img
+    src="/vinuni-logo-v.png"
+    alt="VinUniversity Logo"
+    className="w-6 h-6 shrink-0 mr-1 object-contain"
+  />
+);
+
+const VinUniLogoMonochrome = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <img
+    src="/vinuni-logo-v-white.png"
+    alt="VinUniversity Logo"
+    className={`${className} shrink-0 mr-1.5 object-contain`}
+  />
+);
+
 /* ------------------------------ Motion helpers ----------------------------- */
 
 function Reveal({
@@ -87,11 +103,10 @@ function KineticHeadline({
                 initial={{ y: "110%" }}
                 animate={{ y: 0 }}
                 transition={{ duration: 0.8, delay, ease }}
-                className={`inline-block mr-[0.28em] ${
-                  w.accent
-                    ? "bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-400 bg-clip-text text-transparent"
-                    : "text-white"
-                }`}
+                className={`inline-block mr-[0.28em] ${w.accent
+                  ? "bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500 bg-clip-text text-transparent"
+                  : "text-white"
+                  }`}
               >
                 {w.text}
               </motion.span>
@@ -167,9 +182,8 @@ function HeroScene() {
               {[BarChart3, Search, ClipboardList, FileText].map((Icon, i) => (
                 <span
                   key={i}
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                    i === 0 ? "bg-slate-900 text-white" : "text-slate-300"
-                  }`}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center ${i === 0 ? "bg-slate-900 text-white" : "text-slate-300"
+                    }`}
                 >
                   <Icon className="w-4 h-4" />
                 </span>
@@ -565,10 +579,13 @@ export default function LandingPage() {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.7, ease }}
         className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1
-                   bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-full pl-5 pr-1.5 py-1.5
+                   bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-full pl-4 pr-1.5 py-1.5
                    shadow-[0_16px_40px_-12px_rgba(0,0,0,0.45)]"
       >
-        <span className="font-bold text-white text-base tracking-tight mr-3">Vica</span>
+        <div className="flex items-center font-bold text-white text-base tracking-tight mr-3">
+          <VinUniLogoV />
+          <span>ica</span>
+        </div>
         <Link
           href="/auth/login"
           className="text-white/60 hover:text-white px-3 py-2 text-sm font-medium transition-colors"
@@ -613,56 +630,99 @@ export default function LandingPage() {
         <motion.div className="absolute inset-0 pointer-events-none" style={{ background: spotlight }} />
 
         <div className="relative flex-1 flex flex-col justify-center w-full">
-        <div className="max-w-4xl mx-auto text-center px-6">
+          {/* Floating Widget 1 - Left Upper (AI Fit Score) */}
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.1, ease }}
-            className="inline-flex items-center gap-2 border border-white/10 bg-white/5 backdrop-blur text-white/60 text-xs font-medium px-4 py-1.5 rounded-full mb-9"
+            animate={{ y: [0, -12, 0] }}
+            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute left-[4%] top-[25%] hidden xl:flex items-center gap-3 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] z-20"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-pulse" />
-            AI đồng hành toàn bộ hành trình tìm việc
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-white text-xs font-bold font-sans">Độ tương thích AI</p>
+              <p className="text-white/60 text-[10px] mt-0.5">Frontend Developer</p>
+            </div>
+            <div className="ml-2 px-2.5 py-1 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-200 text-xs font-extrabold">
+              94%
+            </div>
           </motion.div>
 
-          <KineticHeadline
-            baseDelay={0.15}
-            lines={[
-              [{ text: "Tìm" }, { text: "việc" }, { text: "thông" }, { text: "minh," }],
-              [{ text: "bắt", accent: true }, { text: "đầu", accent: true }, { text: "từ", accent: true }, { text: "hôm", accent: true }, { text: "nay.", accent: true }],
-            ]}
-          />
 
-          <motion.p
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.6, ease }}
-            className="text-lg text-white/50 max-w-2xl mx-auto mt-7 mb-11 leading-relaxed"
-          >
-            Từ tìm kiếm, đánh giá độ phù hợp AI, tạo CV đến theo dõi ứng tuyển —
-            tất cả trong một nền tảng, hoàn toàn miễn phí.
-          </motion.p>
-
+          {/* Floating Widget 3 - Left Lower (Active Jobs) */}
           <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.72, ease }}
-            className="flex flex-col sm:flex-row gap-3 justify-center"
+            animate={{ y: [0, 8, 0] }}
+            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
+            className="absolute left-[6%] top-[60%] hidden xl:flex items-center gap-2 bg-slate-900/40 backdrop-blur-md border border-white/5 rounded-xl px-3.5 py-2 shadow-lg z-20"
           >
-            <Link
-              href="/auth/register"
-              className="group inline-flex items-center justify-center gap-2 bg-white hover:bg-slate-100 text-slate-900 px-8 py-4 rounded-2xl font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_48px_-12px_rgba(255,255,255,0.25)]"
-            >
-              Bắt đầu miễn phí
-              <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-            </Link>
-            <Link
-              href="/auth/login"
-              className="inline-flex items-center justify-center gap-2 border border-white/15 bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-2xl font-semibold transition-colors backdrop-blur"
-            >
-              Đã có tài khoản
-            </Link>
+            <div className="w-5 h-5 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400">
+              <Search className="w-3 h-3" />
+            </div>
+            <span className="text-white/80 text-[11px] font-medium font-sans">12 việc làm phù hợp hôm nay</span>
           </motion.div>
-        </div>
+
+          {/* Floating Widget 4 - Right Upper (CV Optimized count) */}
+          <motion.div
+            animate={{ y: [0, -8, 0] }}
+            transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
+            className="absolute right-[8%] top-[20%] hidden xl:flex items-center gap-2 bg-slate-900/40 backdrop-blur-md border border-white/5 rounded-xl px-3.5 py-2 shadow-lg z-20"
+          >
+            <div className="w-5 h-5 rounded-full bg-violet-500/10 flex items-center justify-center text-violet-400">
+              <FileText className="w-3 h-3" />
+            </div>
+            <span className="text-white/80 text-[11px] font-medium font-sans">Đã phân tích 1,420 CV</span>
+          </motion.div>
+
+          <div className="max-w-4xl mx-auto text-center px-6">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.1, ease }}
+              className="inline-flex items-center gap-2 border border-amber-500/30 bg-amber-500/10 backdrop-blur text-amber-200 text-xs font-semibold px-4 py-1.5 rounded-full mb-9"
+            >
+              <VinUniLogoMonochrome />
+              <span>Vica MVP — AI đồng hành tìm việc thông minh</span>
+            </motion.div>
+
+            <KineticHeadline
+              baseDelay={0.15}
+              lines={[
+                [{ text: "Tìm" }, { text: "việc" }, { text: "thông" }, { text: "minh," }],
+                [{ text: "bắt", accent: true }, { text: "đầu", accent: true }, { text: "từ", accent: true }, { text: "hôm", accent: true }, { text: "nay.", accent: true }],
+              ]}
+            />
+
+            <motion.p
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.6, ease }}
+              className="text-lg text-white/50 max-w-2xl mx-auto mt-7 mb-11 leading-relaxed"
+            >
+              Từ tìm kiếm, đánh giá độ phù hợp AI, tạo CV đến theo dõi ứng tuyển —
+              tất cả trong một nền tảng, hoàn toàn miễn phí.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.72, ease }}
+              className="flex flex-col sm:flex-row gap-3 justify-center"
+            >
+              <Link
+                href="/auth/register"
+                className="group inline-flex items-center justify-center gap-2 bg-white hover:bg-slate-100 text-slate-900 px-8 py-4 rounded-2xl font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_48px_-12px_rgba(255,255,255,0.25)]"
+              >
+                Bắt đầu miễn phí
+                <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+              </Link>
+              <Link
+                href="/auth/login"
+                className="inline-flex items-center justify-center gap-2 border border-white/15 bg-white/5 hover:bg-white/10 text-white px-8 py-4 rounded-2xl font-semibold transition-colors backdrop-blur"
+              >
+                Đã có tài khoản
+              </Link>
+            </motion.div>
+          </div>
 
           <HeroScene />
         </div>
