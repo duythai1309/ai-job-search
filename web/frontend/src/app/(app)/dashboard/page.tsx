@@ -116,8 +116,6 @@ export default function DashboardPage() {
           }}
         />
         
-        {/* Gold stripe to anchor VinUni branding */}
-        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-[#DEB25E] via-[#C8953C] to-[#DEB25E]" />
 
         {/* Ambient glow effects */}
         <div className="absolute -top-20 -right-16 w-72 h-72 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />

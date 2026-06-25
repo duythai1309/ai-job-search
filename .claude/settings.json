@@ -1,4 +1,21 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(git check-ignore *)",
+      "Bash(npm run *)",
+      "Bash(gh api *)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(npm install *)",
+      "Bash(sudo npm install -g uipro-cli)",
+      "Bash(npx uipro-cli *)",
+      "Bash(npx tsc *)",
+      "Bash(echo \"---EXIT:$?---\")"
+    ],
+    "additionalDirectories": [
+      ".claude/skills"
+    ]
+  },
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -33,23 +50,6 @@
           }
         ]
       }
-    ]
-  },
-
-  "permissions": {
-    "allow": [
-      "Bash(git check-ignore *)",
-      "Bash(npm run *)",
-      "Bash(gh api *)",
-      "WebFetch(domain:github.com)",
-      "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(npm install *)",
-      "Bash(sudo npm install -g uipro-cli)",
-      "Bash(npx uipro-cli *)"
-    ],
-
-    "additionalDirectories": [
-      ".claude/skills"
     ]
   }
 }

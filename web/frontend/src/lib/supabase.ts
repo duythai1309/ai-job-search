@@ -10,14 +10,21 @@ let _client: BrowserClient | undefined;
  * app touches so pages don't crash on mount.
  */
 function stubClient(): BrowserClient {
-  const noUser = { data: { user: null }, error: null };
+  const mockUser = {
+    id: "mock-user",
+    email: "thai.nguyen@example.com",
+    user_metadata: { onboarding_completed: true, full_name: "Nguyễn Đức Thái" },
+  };
+  const mockSession = { access_token: "mock-token", user: mockUser };
   const auth = {
-    getUser: async () => noUser,
-    getSession: async () => ({ data: { session: null }, error: null }),
-    refreshSession: async () => ({ data: { session: null }, error: null }),
-    updateUser: async () => noUser,
+    getUser: async () => ({ data: { user: mockUser }, error: null }),
+    getSession: async () => ({ data: { session: mockSession }, error: null }),
+    refreshSession: async () => ({ data: { session: mockSession }, error: null }),
+    updateUser: async () => ({ data: { user: mockUser }, error: null }),
     signOut: async () => ({ error: null }),
     onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
+    signInWithPassword: async () => ({ data: { user: mockUser, session: mockSession }, error: null }),
+    signUp: async () => ({ data: { user: mockUser, session: mockSession }, error: null }),
   };
   return { auth } as unknown as BrowserClient;
 }

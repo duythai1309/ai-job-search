@@ -264,9 +264,8 @@ export default function AnalyticsPage() {
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
-                className={`cursor-pointer text-[12.5px] font-semibold px-3 py-1.5 rounded-md transition-colors ${
-                  period === p ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
-                }`}
+                className={`cursor-pointer text-[12.5px] font-semibold px-3 py-1.5 rounded-md transition-colors ${period === p ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                  }`}
               >
                 {p} tháng
               </button>
