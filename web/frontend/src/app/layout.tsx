@@ -18,6 +18,9 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: "Vica",
   description: "Nền tảng tìm việc AI hỗ trợ tạo CV, đánh giá độ phù hợp và theo dõi ứng tuyển",
+  icons: {
+    icon: "/vinuni-logo-v.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
